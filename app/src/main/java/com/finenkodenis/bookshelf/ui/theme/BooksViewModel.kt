@@ -136,27 +136,39 @@ class BooksViewModel(
 
     fun register(username: String, password: String) {
         viewModelScope.launch {
-            when (val result = userRepository.register(username, password)) {
-                is AuthResult.Success -> onAuthSuccess(result.user)
-                is AuthResult.Error -> authError = result.message
+            try {
+                when (val result = userRepository.register(username, password)) {
+                    is AuthResult.Success -> onAuthSuccess(result.user)
+                    is AuthResult.Error -> authError = result.message
+                }
+            } catch (e: Exception) {
+                authError = "Не удалось зарегистрироваться: ${e.message ?: "ошибка приложения"}"
             }
         }
     }
 
     fun login(username: String, password: String) {
         viewModelScope.launch {
-            when (val result = userRepository.login(username, password)) {
-                is AuthResult.Success -> onAuthSuccess(result.user)
-                is AuthResult.Error -> authError = result.message
+            try {
+                when (val result = userRepository.login(username, password)) {
+                    is AuthResult.Success -> onAuthSuccess(result.user)
+                    is AuthResult.Error -> authError = result.message
+                }
+            } catch (e: Exception) {
+                authError = "Не удалось войти: ${e.message ?: "ошибка приложения"}"
             }
         }
     }
 
     fun loginDemo() {
         viewModelScope.launch {
-            when (val result = userRepository.loginDemo()) {
-                is AuthResult.Success -> onAuthSuccess(result.user)
-                is AuthResult.Error -> authError = result.message
+            try {
+                when (val result = userRepository.loginDemo()) {
+                    is AuthResult.Success -> onAuthSuccess(result.user)
+                    is AuthResult.Error -> authError = result.message
+                }
+            } catch (e: Exception) {
+                authError = "Не удалось войти в демо-режим: ${e.message ?: "ошибка приложения"}"
             }
         }
     }

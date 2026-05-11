@@ -109,7 +109,7 @@ interface UserBookDao {
         ORDER BY ub.updated_at DESC, ub.added_at DESC
         """
     )
-    fun observeLibrary(userId: Long, status: ReadingStatus?): Flow<List<LibraryBookRow>>
+    fun observeLibrary(userId: Long, status: String?): Flow<List<LibraryBookRow>>
 
     @Transaction
     @Query(

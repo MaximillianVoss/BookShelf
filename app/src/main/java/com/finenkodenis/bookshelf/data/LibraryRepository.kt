@@ -23,7 +23,7 @@ class LibraryRepository(
     private val recommendationEngine: RecommendationEngine = RecommendationEngine()
 ) {
     fun observeLibrary(userId: Long, status: ReadingStatus? = null): Flow<List<LibraryBook>> {
-        return userBookDao.observeLibrary(userId, status).map { rows ->
+        return userBookDao.observeLibrary(userId, status?.name).map { rows ->
             rows.map { it.toLibraryBook() }
         }
     }

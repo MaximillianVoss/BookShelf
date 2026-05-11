@@ -30,6 +30,9 @@ fun AuthScreen(
     authError: String?,
     onLogin: (String, String) -> Unit,
     onRegister: (String, String) -> Unit,
+    demoUsername: String,
+    demoPassword: String,
+    onDemoLogin: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var username by remember { mutableStateOf("") }
@@ -93,6 +96,23 @@ fun AuthScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Зарегистрироваться")
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Демо-вход: $demoUsername / $demoPassword",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = {
+                    username = demoUsername
+                    password = demoPassword
+                    onDemoLogin()
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Войти как демо-пользователь")
             }
         }
     }

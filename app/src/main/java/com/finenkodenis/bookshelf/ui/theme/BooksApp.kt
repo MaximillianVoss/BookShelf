@@ -38,6 +38,9 @@ fun BooksApp(modifier: Modifier = Modifier) {
             authError = viewModel.authError,
             onLogin = viewModel::login,
             onRegister = viewModel::register,
+            demoUsername = BooksViewModel.DEMO_LOGIN,
+            demoPassword = BooksViewModel.DEMO_PASS,
+            onDemoLogin = viewModel::loginDemo,
             modifier = modifier.fillMaxSize()
         )
         return

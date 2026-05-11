@@ -14,6 +14,8 @@ import com.finenkodenis.bookshelf.BooksApplication
 import com.finenkodenis.bookshelf.data.AuthResult
 import com.finenkodenis.bookshelf.data.Book
 import com.finenkodenis.bookshelf.data.BooksRepository
+import com.finenkodenis.bookshelf.data.DEMO_PASSWORD
+import com.finenkodenis.bookshelf.data.DEMO_USERNAME
 import com.finenkodenis.bookshelf.data.LibraryBook
 import com.finenkodenis.bookshelf.data.LibraryRepository
 import com.finenkodenis.bookshelf.data.LibraryStats
@@ -150,6 +152,15 @@ class BooksViewModel(
         }
     }
 
+    fun loginDemo() {
+        viewModelScope.launch {
+            when (val result = userRepository.loginDemo()) {
+                is AuthResult.Success -> onAuthSuccess(result.user)
+                is AuthResult.Error -> authError = result.message
+            }
+        }
+    }
+
     fun logout() {
         currentUser = null
         currentUserId.value = null
@@ -257,6 +268,9 @@ class BooksViewModel(
     }
 
     companion object {
+        const val DEMO_LOGIN = DEMO_USERNAME
+        const val DEMO_PASS = DEMO_PASSWORD
+
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val application = (this[APPLICATION_KEY] as BooksApplication)

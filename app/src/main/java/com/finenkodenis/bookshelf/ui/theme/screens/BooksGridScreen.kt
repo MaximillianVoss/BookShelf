@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -25,6 +26,7 @@ import coil.request.ImageRequest
 import com.finenkodenis.bookshelf.R
 import com.finenkodenis.bookshelf.data.Book
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
 
 @Composable
 fun BooksGridScreen(
@@ -58,16 +60,27 @@ fun BooksCard(
             defaultElevation = 8.dp)
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            book.title?.let {
+            Text(
+                text = book.title,
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 3,
+                modifier = modifier
+                    .padding(top = 4.dp, bottom = 4.dp, start = 4.dp, end = 4.dp)
+            )
+            if (book.authors.isNotEmpty()) {
                 Text(
-                    text = it,
+                    text = book.authors.joinToString(", "),
                     textAlign = TextAlign.Center,
-                    modifier = modifier
-                        .padding(top = 4.dp, bottom = 8.dp)
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 2,
+                    modifier = modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                 )
             }
             AsyncImage(
-                modifier = modifier.fillMaxWidth(),
+                modifier = modifier
+                    .fillMaxWidth()
+                    .height(210.dp),
                 model = ImageRequest.Builder(context = LocalContext.current)
                     .data(book.imageLink?.replace("http", "https"))
                     .crossfade(true)

@@ -1,0 +1,65 @@
+package com.finenkodenis.bookshelf.ui.theme.screens
+
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.dp
+import com.finenkodenis.bookshelf.data.Book
+import com.finenkodenis.bookshelf.ui.theme.BooksUiState
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SearchScreen(
+    booksUiState: BooksUiState,
+    searchText: String,
+    onSearchTextChange: (String) -> Unit,
+    onSearch: (String) -> Unit,
+    onBookClicked: (Book) -> Unit,
+    retryAction: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
+            OutlinedTextField(
+                value = searchText,
+                onValueChange = onSearchTextChange,
+                label = { Text("Название, автор или жанр") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { onSearch(searchText) }),
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(onClick = { onSearch(searchText) }) {
+                Text("Найти")
+            }
+        }
+
+        when (booksUiState) {
+            is BooksUiState.Loading -> LoadingScreen(Modifier.fillMaxSize())
+            is BooksUiState.Success -> BooksGridScreen(
+                books = booksUiState.bookSearch,
+                modifier = Modifier,
+                onBookClicked = onBookClicked
+            )
+            is BooksUiState.Error -> ErrorScreen(retryAction = retryAction, modifier = Modifier.fillMaxSize())
+        }
+    }
+}

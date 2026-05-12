@@ -19,15 +19,17 @@ class NetworkBooksRepository(
         query: String,
         maxResults: Int
     ): List<Book> {
+        val normalizedQuery = query.trim().ifBlank { "book" }
+        val openLibraryQuery = normalizedQuery.removePrefix("subject:").trim().ifBlank { normalizedQuery }
         val googleLimit = min(max(maxResults / 2, 1), 40)
         val openLibraryLimit = min(max(maxResults - googleLimit, 1), 50)
 
         val googleBooks = runCatching {
-            bookService.bookSearch(query, googleLimit).items.map { it.toBook() }
+            bookService.bookSearch(normalizedQuery, googleLimit).items.map { it.toBook() }
         }.getOrDefault(emptyList())
 
         val openLibraryBooks = runCatching {
-            openLibraryService.searchBooks(query, openLibraryLimit).docs.map { it.toBook() }
+            openLibraryService.searchBooks(openLibraryQuery, openLibraryLimit).docs.map { it.toBook() }
         }.getOrDefault(emptyList())
 
         return (googleBooks + openLibraryBooks)

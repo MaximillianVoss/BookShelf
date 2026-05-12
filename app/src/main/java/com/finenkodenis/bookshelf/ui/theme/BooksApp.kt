@@ -90,8 +90,10 @@ fun BooksApp(modifier: Modifier = Modifier) {
                 AppSection.SEARCH -> SearchScreen(
                     booksUiState = viewModel.booksUiState,
                     searchText = viewModel.searchTextState.value,
+                    genres = viewModel.genres,
                     onSearchTextChange = viewModel::updateSearchTextState,
                     onSearch = { viewModel.getBooks(it.ifBlank { "book" }) },
+                    onGenreClicked = viewModel::searchByGenre,
                     onBookClicked = { viewModel.openBook(it) },
                     retryAction = { viewModel.getBooks() }
                 )

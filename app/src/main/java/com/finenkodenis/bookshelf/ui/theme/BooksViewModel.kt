@@ -13,6 +13,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.finenkodenis.bookshelf.BooksApplication
 import com.finenkodenis.bookshelf.data.AuthResult
 import com.finenkodenis.bookshelf.data.Book
+import com.finenkodenis.bookshelf.data.BookGenre
 import com.finenkodenis.bookshelf.data.BooksRepository
 import com.finenkodenis.bookshelf.data.DEMO_PASSWORD
 import com.finenkodenis.bookshelf.data.DEMO_USERNAME
@@ -23,6 +24,7 @@ import com.finenkodenis.bookshelf.data.RecommendationEngine
 import com.finenkodenis.bookshelf.data.User
 import com.finenkodenis.bookshelf.data.UserRepository
 import com.finenkodenis.bookshelf.data.local.ReadingStatus
+import com.finenkodenis.bookshelf.data.mainBookGenres
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -114,6 +116,8 @@ class BooksViewModel(
 
     private val _searchTextState = mutableStateOf("")
     val searchTextState: State<String> = _searchTextState
+
+    val genres: List<BookGenre> = mainBookGenres
 
     init {
         getBooks()
@@ -210,6 +214,11 @@ class BooksViewModel(
                     BooksUiState.Error()
                 }
         }
+    }
+
+    fun searchByGenre(genre: BookGenre) {
+        _searchTextState.value = genre.title
+        getBooks(genre.query)
     }
 
     fun saveSelectedBook(status: ReadingStatus, rating: Int?, review: String?) {

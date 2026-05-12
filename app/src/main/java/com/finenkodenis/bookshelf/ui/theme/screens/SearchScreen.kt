@@ -1,16 +1,20 @@
 package com.finenkodenis.bookshelf.ui.theme.screens
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.finenkodenis.bookshelf.data.Book
+import com.finenkodenis.bookshelf.data.BookGenre
 import com.finenkodenis.bookshelf.ui.theme.BooksUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -25,8 +30,10 @@ import com.finenkodenis.bookshelf.ui.theme.BooksUiState
 fun SearchScreen(
     booksUiState: BooksUiState,
     searchText: String,
+    genres: List<BookGenre>,
     onSearchTextChange: (String) -> Unit,
     onSearch: (String) -> Unit,
+    onGenreClicked: (BookGenre) -> Unit,
     onBookClicked: (Book) -> Unit,
     retryAction: () -> Unit,
     modifier: Modifier = Modifier
@@ -51,6 +58,11 @@ fun SearchScreen(
                 Text("Найти")
             }
         }
+        GenreCatalog(
+            genres = genres,
+            onGenreClicked = onGenreClicked,
+            modifier = Modifier.fillMaxWidth()
+        )
 
         when (booksUiState) {
             is BooksUiState.Loading -> LoadingScreen(Modifier.fillMaxSize())
@@ -60,6 +72,35 @@ fun SearchScreen(
                 onBookClicked = onBookClicked
             )
             is BooksUiState.Error -> ErrorScreen(retryAction = retryAction, modifier = Modifier.fillMaxSize())
+        }
+    }
+}
+
+@Composable
+private fun GenreCatalog(
+    genres: List<BookGenre>,
+    onGenreClicked: (BookGenre) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.padding(start = 12.dp, end = 12.dp, bottom = 8.dp)) {
+        Text(
+            text = "Основные жанры",
+            style = MaterialTheme.typography.titleMedium
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(top = 8.dp),
+        ) {
+            genres.forEach { genre ->
+                OutlinedButton(
+                    onClick = { onGenreClicked(genre) },
+                    modifier = Modifier.padding(end = 8.dp)
+                ) {
+                    Text(text = genre.title, maxLines = 1)
+                }
+            }
         }
     }
 }

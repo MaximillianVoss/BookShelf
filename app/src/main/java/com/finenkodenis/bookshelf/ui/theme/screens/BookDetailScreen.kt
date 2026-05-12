@@ -38,6 +38,7 @@ import coil.request.ImageRequest
 import com.finenkodenis.bookshelf.R
 import com.finenkodenis.bookshelf.data.Book
 import com.finenkodenis.bookshelf.data.LibraryBook
+import com.finenkodenis.bookshelf.data.toSecureImageUrl
 import com.finenkodenis.bookshelf.data.local.ReadingStatus
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -91,7 +92,7 @@ fun BookDetailScreen(
                     .width(128.dp)
                     .height(188.dp),
                 model = ImageRequest.Builder(context = LocalContext.current)
-                    .data(book.imageLink?.replace("http", "https"))
+                    .data(book.imageLink.toSecureImageUrl())
                     .crossfade(true)
                     .build(),
                 error = painterResource(id = R.drawable.ic_book_96),

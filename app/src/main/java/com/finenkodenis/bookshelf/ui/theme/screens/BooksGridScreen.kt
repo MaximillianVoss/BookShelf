@@ -25,6 +25,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.finenkodenis.bookshelf.R
 import com.finenkodenis.bookshelf.data.Book
+import com.finenkodenis.bookshelf.data.toSecureImageUrl
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 
@@ -82,7 +83,7 @@ fun BooksCard(
                     .fillMaxWidth()
                     .height(210.dp),
                 model = ImageRequest.Builder(context = LocalContext.current)
-                    .data(book.imageLink?.replace("http", "https"))
+                    .data(book.imageLink.toSecureImageUrl())
                     .crossfade(true)
                     .build(),
                 error = painterResource(id = R.drawable.ic_book_96),

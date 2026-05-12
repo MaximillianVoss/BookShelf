@@ -32,9 +32,13 @@ class NetworkBooksRepository(
             openLibraryService.searchBooks(openLibraryQuery, openLibraryLimit).docs.map { it.toBook() }
         }.getOrDefault(emptyList())
 
-        return (googleBooks + openLibraryBooks)
+        val remoteBooks = (googleBooks + openLibraryBooks)
             .distinctBy { it.externalId ?: "${it.source}:${it.title.lowercase()}" }
             .take(maxResults)
+
+        return remoteBooks.ifEmpty {
+            fallbackBooksForQuery(normalizedQuery, maxResults)
+        }
     }
 
     private fun Items.toBook(): Book {

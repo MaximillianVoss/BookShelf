@@ -515,8 +515,10 @@ app/src/main/java/com/finenkodenis/bookshelf/data/BooksRepository.kt
 Метод:
 
 ```kotlin
-suspend fun getBooks(query: String, maxResults: Int): List<Book>
+suspend fun getBooks(query: String, maxResults: Int, source: BookSearchSource): List<Book>
 ```
+
+Параметр `source` задает источник поиска: все источники, только Google Books, только Open Library или локальный каталог.
 
 ### `NetworkBooksRepository`
 
@@ -533,15 +535,18 @@ app/src/main/java/com/finenkodenis/bookshelf/data/BooksRepository.kt
 - `BookService` для Google Books;
 - `OpenLibraryService` для Open Library;
 - fallback-каталогом, если API не вернули результат.
+- необязательным `googleBooksApiKey`, который передается в Google Books как параметр `key`.
 
 Логика:
 
 1. Нормализует поисковый запрос.
-2. Делит лимит результатов между Google Books и Open Library.
-3. Выполняет сетевые запросы через Retrofit.
-4. Преобразует API-модели в доменную модель `Book`.
-5. Удаляет дубликаты.
-6. Если список пустой, использует `fallbackBooksForQuery`.
+2. Выбирает источник по `BookSearchSource`.
+3. Для режима `ALL` делит лимит результатов между Google Books и Open Library.
+4. Выполняет сетевые запросы через Retrofit.
+5. Преобразует API-модели в доменную модель `Book`.
+6. Удаляет дубликаты.
+7. Если общий список пустой, использует `fallbackBooksForQuery`.
+8. Для конкретного выбранного источника не подменяет результат fallback-каталогом, чтобы пользователь видел реальное состояние выбранного API.
 
 ### `LibraryRepository`
 
@@ -1112,6 +1117,16 @@ Retrofit-интерфейс Google Books API.
 ```kotlin
 GET volumes
 ```
+
+Параметры запроса:
+
+```text
+q          - строка поиска
+maxResults - лимит результатов
+key        - необязательный Google Books API key
+```
+
+Ключ берется из `BuildConfig.GOOGLE_BOOKS_API_KEY`, который формируется из локального `local.properties`.
 
 Используется в `NetworkBooksRepository`.
 

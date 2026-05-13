@@ -81,7 +81,11 @@ fun SearchScreen(
                 modifier = Modifier,
                 onBookClicked = onBookClicked
             )
-            is BooksUiState.Error -> ErrorScreen(retryAction = retryAction, modifier = Modifier.fillMaxSize())
+            is BooksUiState.Error -> ErrorScreen(
+                retryAction = retryAction,
+                modifier = Modifier.fillMaxSize(),
+                message = booksUiState.message
+            )
         }
     }
 }

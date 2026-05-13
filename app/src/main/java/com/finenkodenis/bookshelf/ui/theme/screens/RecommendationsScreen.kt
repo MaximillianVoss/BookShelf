@@ -68,7 +68,11 @@ fun RecommendationsScreen(
                     )
                 }
             }
-            is BooksUiState.Error -> ErrorScreen(retryAction = onReload, modifier = Modifier.fillMaxSize())
+            is BooksUiState.Error -> ErrorScreen(
+                retryAction = onReload,
+                modifier = Modifier.fillMaxSize(),
+                message = booksUiState.message
+            )
         }
     }
 }

@@ -282,10 +282,33 @@ class BooksViewModel(
                 try {
                     BooksUiState.Success(booksRepository.getBooks(query, maxResults, source))
                 } catch (e: IOException) {
-                    BooksUiState.Error()
+                    BooksUiState.Error(networkErrorMessage(source))
                 } catch (e: HttpException) {
-                    BooksUiState.Error()
+                    BooksUiState.Error(httpErrorMessage(e, source))
                 }
+        }
+    }
+
+    private fun networkErrorMessage(source: BookSearchSource): String {
+        return when (source) {
+            BookSearchSource.GOOGLE -> "Не удалось подключиться к Google Books. Проверьте интернет или выберите другой источник."
+            BookSearchSource.OPEN_LIBRARY -> "Не удалось подключиться к Open Library. Проверьте интернет или выберите другой источник."
+            else -> "Не удалось загрузить книги. Проверьте интернет и повторите попытку."
+        }
+    }
+
+    private fun httpErrorMessage(error: HttpException, source: BookSearchSource): String {
+        return when {
+            source == BookSearchSource.GOOGLE && error.code() == 429 ->
+                "Google Books временно ограничил запросы (429). Добавьте GOOGLE_BOOKS_API_KEY в local.properties или выберите другой источник."
+            source == BookSearchSource.GOOGLE && error.code() == 403 ->
+                "Google Books отклонил запрос. Проверьте GOOGLE_BOOKS_API_KEY или выберите другой источник."
+            source == BookSearchSource.GOOGLE ->
+                "Не удалось загрузить книги из Google Books: HTTP ${error.code()}."
+            source == BookSearchSource.OPEN_LIBRARY ->
+                "Не удалось загрузить книги из Open Library: HTTP ${error.code()}."
+            else ->
+                "Не удалось загрузить книги: HTTP ${error.code()}."
         }
     }
 

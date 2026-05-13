@@ -9,6 +9,7 @@ interface BookService {
     @GET("volumes")
     suspend fun bookSearch(
         @Query("q") searchQuery: String,
-        @Query("maxResults") maxResults: Int
+        @Query("maxResults") maxResults: Int,
+        @Query("key") apiKey: String? = null
     ): BookShelf
 }

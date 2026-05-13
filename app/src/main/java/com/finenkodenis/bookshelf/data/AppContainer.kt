@@ -1,6 +1,7 @@
 package com.finenkodenis.bookshelf.data
 
 import android.content.Context
+import com.finenkodenis.bookshelf.BuildConfig
 import com.finenkodenis.bookshelf.data.local.BooksDatabase
 import com.finenkodenis.bookshelf.network.model.BookService
 import com.finenkodenis.bookshelf.network.model.OpenLibraryService
@@ -38,7 +39,11 @@ class DefaultAppContainer(context: Context) : AppContainer {
     }
 
     override val booksRepository: BooksRepository by lazy {
-        NetworkBooksRepository(googleBooksService, openLibraryService)
+        NetworkBooksRepository(
+            bookService = googleBooksService,
+            openLibraryService = openLibraryService,
+            googleBooksApiKey = BuildConfig.GOOGLE_BOOKS_API_KEY
+        )
     }
 
     override val libraryRepository: LibraryRepository by lazy {

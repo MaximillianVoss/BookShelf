@@ -17,7 +17,8 @@ interface BooksRepository {
 
 class NetworkBooksRepository(
     private val bookService: BookService,
-    private val openLibraryService: OpenLibraryService
+    private val openLibraryService: OpenLibraryService,
+    private val googleBooksApiKey: String = ""
 ) : BooksRepository {
     override suspend fun getBooks(
         query: String,
@@ -44,8 +45,8 @@ class NetworkBooksRepository(
     private suspend fun getMergedRemoteBooks(query: String, maxResults: Int): List<Book> {
         val googleLimit = min(max(maxResults / 2, 1), 40)
         val openLibraryLimit = min(max(maxResults - googleLimit, 1), 50)
-        val googleBooks = getGoogleBooks(query, googleLimit)
-        val openLibraryBooks = getOpenLibraryBooks(query, openLibraryLimit)
+        val googleBooks = runCatching { getGoogleBooks(query, googleLimit) }.getOrDefault(emptyList())
+        val openLibraryBooks = runCatching { getOpenLibraryBooks(query, openLibraryLimit) }.getOrDefault(emptyList())
 
         return (googleBooks + openLibraryBooks)
             .distinctBy { it.externalId ?: "${it.source}:${it.title.lowercase()}" }
@@ -53,16 +54,13 @@ class NetworkBooksRepository(
     }
 
     private suspend fun getGoogleBooks(query: String, limit: Int): List<Book> {
-        return runCatching {
-            bookService.bookSearch(query, limit).items.map { it.toBook() }
-        }.getOrDefault(emptyList())
+        val apiKey = googleBooksApiKey.trim().takeIf { it.isNotBlank() }
+        return bookService.bookSearch(query, limit, apiKey).items.map { it.toBook() }
     }
 
     private suspend fun getOpenLibraryBooks(query: String, limit: Int): List<Book> {
         val openLibraryQuery = query.removePrefix("subject:").trim().ifBlank { query }
-        return runCatching {
-            openLibraryService.searchBooks(openLibraryQuery, limit).docs.map { it.toBook() }
-        }.getOrDefault(emptyList())
+        return openLibraryService.searchBooks(openLibraryQuery, limit).docs.map { it.toBook() }
     }
 
     private fun Items.toBook(): Book {

@@ -133,7 +133,7 @@ private fun StatusChart(statusCounts: Map<ReadingStatus, Int>) {
 @Composable
 private fun ReadingCalendar(stats: LibraryStats) {
     val activeDays = stats.readingDays.associateBy { it.date }
-    val days = lastDays(28)
+    val days = lastDays(30)
 
     Card(elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
         Column(
@@ -141,7 +141,7 @@ private fun ReadingCalendar(stats: LibraryStats) {
                 .fillMaxWidth()
                 .padding(12.dp)
         ) {
-            Text("Календарь чтения за 28 дней", style = MaterialTheme.typography.titleMedium)
+            Text("Календарь чтения за 30 дней", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(12.dp))
             days.chunked(7).forEach { week ->
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {

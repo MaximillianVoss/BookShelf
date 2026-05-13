@@ -104,12 +104,13 @@ class LibraryRepository(
         userBookId: Long,
         minutesRead: Int,
         pagesRead: Int,
-        note: String? = null
+        note: String? = null,
+        readDate: String = today()
     ) {
         readingSessionDao.insert(
             ReadingSessionEntity(
                 userBookId = userBookId,
-                readDate = today(),
+                readDate = readDate,
                 minutesRead = minutesRead.coerceAtLeast(0),
                 pagesRead = pagesRead.coerceAtLeast(0),
                 note = note
@@ -150,6 +151,34 @@ class LibraryRepository(
         }
 
         return updated.toLibraryBook(savedBook)
+    }
+
+    suspend fun seedDemoData(userId: Long) {
+        val userBookIds = mutableMapOf<String, Long>()
+
+        DemoLibrarySeed.books.forEach { seed ->
+            val userBookId = addOrUpdateBook(
+                userId = userId,
+                book = seed.book,
+                status = seed.status,
+                rating = seed.rating,
+                review = seed.review
+            )
+            seed.book.externalId?.let { userBookIds[it] = userBookId }
+        }
+
+        readingSessionDao.deleteByNote(userId, DemoLibrarySeed.SESSION_NOTE)
+
+        DemoLibrarySeed.monthSessions().forEach { session ->
+            val userBookId = userBookIds[session.bookExternalId] ?: return@forEach
+            addReadingSession(
+                userBookId = userBookId,
+                minutesRead = session.minutesRead,
+                pagesRead = session.pagesRead,
+                note = DemoLibrarySeed.SESSION_NOTE,
+                readDate = session.readDate
+            )
+        }
     }
 
     fun topGenres(library: List<LibraryBook>): List<GenreStat> {

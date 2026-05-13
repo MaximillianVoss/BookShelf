@@ -179,7 +179,14 @@ class BooksViewModel(
         viewModelScope.launch {
             try {
                 when (val result = userRepository.loginDemo()) {
-                    is AuthResult.Success -> onAuthSuccess(result.user)
+                    is AuthResult.Success -> {
+                        onAuthSuccess(result.user)
+                        runCatching {
+                            libraryRepository.seedDemoData(result.user.id)
+                        }.onFailure {
+                            authError = "Демо-данные не удалось загрузить: ${it.message ?: "ошибка приложения"}"
+                        }
+                    }
                     is AuthResult.Error -> authError = result.message
                 }
             } catch (e: Exception) {

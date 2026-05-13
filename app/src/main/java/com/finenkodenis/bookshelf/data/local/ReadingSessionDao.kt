@@ -23,6 +23,20 @@ interface ReadingSessionDao {
 
     @Query(
         """
+        DELETE FROM reading_sessions
+        WHERE session_id IN (
+            SELECT rs.session_id
+            FROM reading_sessions rs
+            INNER JOIN user_books ub ON ub.user_book_id = rs.user_book_id
+            WHERE ub.user_id = :userId
+              AND rs.note = :note
+        )
+        """
+    )
+    suspend fun deleteByNote(userId: Long, note: String)
+
+    @Query(
+        """
         SELECT
             rs.read_date,
             SUM(rs.minutes_read) AS total_minutes,

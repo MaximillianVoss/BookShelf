@@ -117,6 +117,41 @@ class LibraryRepository(
         )
     }
 
+    suspend fun ensureBookForReading(userId: Long, book: Book): LibraryBook {
+        val bookId = saveBook(book)
+        val existing = userBookDao.getByUserAndBook(userId, bookId)
+        val now = System.currentTimeMillis()
+        val savedBook = book.copy(localId = bookId)
+
+        if (existing == null) {
+            val userBook = UserBookEntity(
+                userId = userId,
+                bookId = bookId,
+                status = ReadingStatus.READING,
+                startedAt = now,
+                updatedAt = now
+            )
+            val userBookId = userBookDao.insert(userBook)
+            return userBook.copy(userBookId = userBookId).toLibraryBook(savedBook)
+        }
+
+        val updated = if (existing.status == ReadingStatus.WANT_TO_READ) {
+            val readingBook = existing.copy(
+                status = ReadingStatus.READING,
+                startedAt = existing.startedAt ?: now,
+                updatedAt = now
+            )
+            userBookDao.update(
+                readingBook
+            )
+            readingBook
+        } else {
+            existing
+        }
+
+        return updated.toLibraryBook(savedBook)
+    }
+
     fun topGenres(library: List<LibraryBook>): List<GenreStat> {
         return recommendationEngine.topGenres(library)
     }
@@ -180,6 +215,20 @@ class LibraryRepository(
                 previewLink = previewLink,
                 imageLink = thumbnailUrl
             )
+        )
+    }
+
+    private fun UserBookEntity.toLibraryBook(book: Book): LibraryBook {
+        return LibraryBook(
+            userBookId = userBookId,
+            userId = userId,
+            book = book,
+            status = status,
+            rating = rating,
+            review = review,
+            addedAt = addedAt,
+            startedAt = startedAt,
+            finishedAt = finishedAt
         )
     }
 

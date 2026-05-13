@@ -20,6 +20,7 @@ import com.finenkodenis.bookshelf.data.DEMO_USERNAME
 import com.finenkodenis.bookshelf.data.LibraryBook
 import com.finenkodenis.bookshelf.data.LibraryRepository
 import com.finenkodenis.bookshelf.data.LibraryStats
+import com.finenkodenis.bookshelf.data.ReadingTimer
 import com.finenkodenis.bookshelf.data.RecommendationEngine
 import com.finenkodenis.bookshelf.data.User
 import com.finenkodenis.bookshelf.data.UserRepository
@@ -90,6 +91,9 @@ class BooksViewModel(
         private set
 
     var readerTitle: String by mutableStateOf("")
+        private set
+
+    var readerStartedAtMillis: Long? by mutableStateOf(null)
         private set
 
     private val currentUserId = MutableStateFlow<Long?>(null)
@@ -192,6 +196,7 @@ class BooksViewModel(
         selectedLibraryBook = null
         readerUrl = null
         readerTitle = ""
+        readerStartedAtMillis = null
         currentSection = AppSection.SEARCH
     }
 
@@ -215,13 +220,38 @@ class BooksViewModel(
         val url = book.previewLink ?: return
         readerUrl = url
         readerTitle = book.title
+        readerStartedAtMillis = System.currentTimeMillis()
         currentSection = AppSection.READER
     }
 
     fun closeReader() {
         readerUrl = null
         readerTitle = ""
+        readerStartedAtMillis = null
         currentSection = AppSection.DETAIL
+    }
+
+    fun elapsedReaderMinutes(): Int {
+        val startedAt = readerStartedAtMillis ?: return 1
+        return ReadingTimer.elapsedMinutes(startedAt, System.currentTimeMillis())
+    }
+
+    fun saveReaderSession(minutesRead: Int) {
+        val user = currentUser ?: return
+        val book = selectedBook ?: return
+        val normalizedMinutes = minutesRead.coerceAtLeast(1)
+
+        viewModelScope.launch {
+            val libraryBook = libraryRepository.ensureBookForReading(user.id, book)
+            libraryRepository.addReadingSession(
+                userBookId = libraryBook.userBookId,
+                minutesRead = normalizedMinutes,
+                pagesRead = 0,
+                note = "Автоматически засчитано из встроенного чтения"
+            )
+            selectedLibraryBook = libraryBook
+            closeReader()
+        }
     }
 
     fun getBooks(query: String = "book", maxResults: Int = 40) {

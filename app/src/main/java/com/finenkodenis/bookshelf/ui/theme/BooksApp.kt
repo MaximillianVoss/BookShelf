@@ -125,7 +125,9 @@ fun BooksApp(modifier: Modifier = Modifier) {
                 AppSection.READER -> ReaderScreen(
                     title = viewModel.readerTitle,
                     url = viewModel.readerUrl,
-                    onBack = viewModel::closeReader
+                    elapsedMinutes = viewModel::elapsedReaderMinutes,
+                    onBack = viewModel::closeReader,
+                    onSaveReadingSession = viewModel::saveReaderSession
                 )
             }
         }

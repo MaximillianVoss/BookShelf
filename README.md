@@ -251,9 +251,12 @@ reading_sessions
 ```text
 docs/database_schema.md
 docs/database_schema.sql
+docs/classes_overview.md
 ```
 
 Файл `docs/database_schema.sql` содержит расширенную проектную SQL-схему для пояснительной записки. Она подробнее нормализует авторов, жанры, источники и рекомендации. Текущая Android-реализация использует более компактную Room-схему, показанную выше.
+
+Файл `docs/classes_overview.md` содержит описание основных классов, экранов, репозиториев, DAO и моделей проекта.
 
 ## Как посмотреть БД
 

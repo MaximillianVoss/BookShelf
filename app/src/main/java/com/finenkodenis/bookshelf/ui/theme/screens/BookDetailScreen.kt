@@ -29,7 +29,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -49,6 +48,7 @@ fun BookDetailScreen(
     onBack: () -> Unit,
     onSave: (ReadingStatus, Int?, String?) -> Unit,
     onAddReadingSession: (Long, Int, Int) -> Unit,
+    onReadInApp: (Book) -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (book == null) {
@@ -65,7 +65,6 @@ fun BookDetailScreen(
     var review by remember { mutableStateOf(libraryBook?.review.orEmpty()) }
     var minutesRead by remember { mutableStateOf("20") }
     var pagesRead by remember { mutableStateOf("10") }
-    val uriHandler = LocalUriHandler.current
 
     LaunchedEffect(book.localId, libraryBook?.userBookId) {
         status = libraryBook?.status ?: ReadingStatus.WANT_TO_READ
@@ -230,8 +229,11 @@ fun BookDetailScreen(
         val previewLink = book.previewLink
         if (!previewLink.isNullOrBlank()) {
             Spacer(modifier = Modifier.height(16.dp))
-            OutlinedButton(onClick = { uriHandler.openUri(previewLink) }) {
-                Text("Открыть страницу книги")
+            OutlinedButton(
+                onClick = { onReadInApp(book) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Читать в приложении")
             }
         }
     }

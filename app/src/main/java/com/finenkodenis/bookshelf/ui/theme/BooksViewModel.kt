@@ -53,7 +53,8 @@ enum class AppSection(val title: String) {
     LIBRARY("Библиотека"),
     RECOMMENDATIONS("Рекомендации"),
     STATS("Статистика"),
-    DETAIL("Книга")
+    DETAIL("Книга"),
+    READER("Чтение")
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -83,6 +84,12 @@ class BooksViewModel(
         private set
 
     var selectedLibraryBook: LibraryBook? by mutableStateOf(null)
+        private set
+
+    var readerUrl: String? by mutableStateOf(null)
+        private set
+
+    var readerTitle: String by mutableStateOf("")
         private set
 
     private val currentUserId = MutableStateFlow<Long?>(null)
@@ -183,6 +190,8 @@ class BooksViewModel(
         authError = null
         selectedBook = null
         selectedLibraryBook = null
+        readerUrl = null
+        readerTitle = ""
         currentSection = AppSection.SEARCH
     }
 
@@ -200,6 +209,19 @@ class BooksViewModel(
         selectedBook = null
         selectedLibraryBook = null
         currentSection = AppSection.SEARCH
+    }
+
+    fun openReader(book: Book) {
+        val url = book.previewLink ?: return
+        readerUrl = url
+        readerTitle = book.title
+        currentSection = AppSection.READER
+    }
+
+    fun closeReader() {
+        readerUrl = null
+        readerTitle = ""
+        currentSection = AppSection.DETAIL
     }
 
     fun getBooks(query: String = "book", maxResults: Int = 40) {

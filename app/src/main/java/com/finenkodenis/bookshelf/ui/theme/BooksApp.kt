@@ -20,6 +20,7 @@ import com.finenkodenis.bookshelf.ui.theme.screens.AuthScreen
 import com.finenkodenis.bookshelf.ui.theme.screens.BookDetailScreen
 import com.finenkodenis.bookshelf.ui.theme.screens.LibraryScreen
 import com.finenkodenis.bookshelf.ui.theme.screens.RecommendationsScreen
+import com.finenkodenis.bookshelf.ui.theme.screens.ReaderScreen
 import com.finenkodenis.bookshelf.ui.theme.screens.SearchScreen
 import com.finenkodenis.bookshelf.ui.theme.screens.StatsScreen
 
@@ -61,7 +62,7 @@ fun BooksApp(modifier: Modifier = Modifier) {
             )
         },
         bottomBar = {
-            if (viewModel.currentSection != AppSection.DETAIL) {
+            if (viewModel.currentSection != AppSection.DETAIL && viewModel.currentSection != AppSection.READER) {
                 NavigationBar {
                     listOf(
                         AppSection.SEARCH,
@@ -118,7 +119,13 @@ fun BooksApp(modifier: Modifier = Modifier) {
                     libraryBook = viewModel.selectedLibraryBook,
                     onBack = viewModel::closeBookDetails,
                     onSave = viewModel::saveSelectedBook,
-                    onAddReadingSession = viewModel::addReadingSession
+                    onAddReadingSession = viewModel::addReadingSession,
+                    onReadInApp = viewModel::openReader
+                )
+                AppSection.READER -> ReaderScreen(
+                    title = viewModel.readerTitle,
+                    url = viewModel.readerUrl,
+                    onBack = viewModel::closeReader
                 )
             }
         }

@@ -14,6 +14,7 @@ import com.finenkodenis.bookshelf.BooksApplication
 import com.finenkodenis.bookshelf.data.AuthResult
 import com.finenkodenis.bookshelf.data.Book
 import com.finenkodenis.bookshelf.data.BookGenre
+import com.finenkodenis.bookshelf.data.BookSearchSource
 import com.finenkodenis.bookshelf.data.BooksRepository
 import com.finenkodenis.bookshelf.data.DEMO_PASSWORD
 import com.finenkodenis.bookshelf.data.DEMO_USERNAME
@@ -129,6 +130,10 @@ class BooksViewModel(
     val searchTextState: State<String> = _searchTextState
 
     val genres: List<BookGenre> = mainBookGenres
+    val searchSources: List<BookSearchSource> = BookSearchSource.values().toList()
+
+    var selectedSearchSource: BookSearchSource by mutableStateOf(BookSearchSource.ALL)
+        private set
 
     init {
         getBooks()
@@ -140,6 +145,11 @@ class BooksViewModel(
 
     fun updateSearchTextState(newValue: String) {
         _searchTextState.value = newValue
+    }
+
+    fun selectSearchSource(source: BookSearchSource) {
+        selectedSearchSource = source
+        getBooks(_searchTextState.value.ifBlank { "book" })
     }
 
     fun selectSection(section: AppSection) {
@@ -261,12 +271,16 @@ class BooksViewModel(
         }
     }
 
-    fun getBooks(query: String = "book", maxResults: Int = 40) {
+    fun getBooks(
+        query: String = "book",
+        maxResults: Int = 40,
+        source: BookSearchSource = selectedSearchSource
+    ) {
         viewModelScope.launch {
             booksUiState = BooksUiState.Loading
             booksUiState =
                 try {
-                    BooksUiState.Success(booksRepository.getBooks(query, maxResults))
+                    BooksUiState.Success(booksRepository.getBooks(query, maxResults, source))
                 } catch (e: IOException) {
                     BooksUiState.Error()
                 } catch (e: HttpException) {

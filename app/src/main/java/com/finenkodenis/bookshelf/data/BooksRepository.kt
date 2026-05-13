@@ -8,7 +8,11 @@ import kotlin.math.max
 import kotlin.math.min
 
 interface BooksRepository {
-    suspend fun getBooks(query: String, maxResults: Int) : List<Book>
+    suspend fun getBooks(
+        query: String,
+        maxResults: Int,
+        source: BookSearchSource = BookSearchSource.ALL
+    ) : List<Book>
 }
 
 class NetworkBooksRepository(
@@ -17,28 +21,48 @@ class NetworkBooksRepository(
 ) : BooksRepository {
     override suspend fun getBooks(
         query: String,
-        maxResults: Int
+        maxResults: Int,
+        source: BookSearchSource
     ): List<Book> {
         val normalizedQuery = query.trim().ifBlank { "book" }
-        val openLibraryQuery = normalizedQuery.removePrefix("subject:").trim().ifBlank { normalizedQuery }
-        val googleLimit = min(max(maxResults / 2, 1), 40)
-        val openLibraryLimit = min(max(maxResults - googleLimit, 1), 50)
+        val remoteBooks = when (source) {
+            BookSearchSource.ALL -> getMergedRemoteBooks(normalizedQuery, maxResults)
+            BookSearchSource.GOOGLE -> getGoogleBooks(normalizedQuery, min(max(maxResults, 1), 40))
+            BookSearchSource.OPEN_LIBRARY -> getOpenLibraryBooks(normalizedQuery, min(max(maxResults, 1), 50))
+            BookSearchSource.LOCAL -> emptyList()
+        }
 
-        val googleBooks = runCatching {
-            bookService.bookSearch(normalizedQuery, googleLimit).items.map { it.toBook() }
-        }.getOrDefault(emptyList())
-
-        val openLibraryBooks = runCatching {
-            openLibraryService.searchBooks(openLibraryQuery, openLibraryLimit).docs.map { it.toBook() }
-        }.getOrDefault(emptyList())
-
-        val remoteBooks = (googleBooks + openLibraryBooks)
-            .distinctBy { it.externalId ?: "${it.source}:${it.title.lowercase()}" }
-            .take(maxResults)
+        if (source == BookSearchSource.LOCAL) {
+            return fallbackBooksForQuery(normalizedQuery, maxResults)
+        }
 
         return remoteBooks.ifEmpty {
-            fallbackBooksForQuery(normalizedQuery, maxResults)
+            if (source == BookSearchSource.ALL) fallbackBooksForQuery(normalizedQuery, maxResults) else emptyList()
         }
+    }
+
+    private suspend fun getMergedRemoteBooks(query: String, maxResults: Int): List<Book> {
+        val googleLimit = min(max(maxResults / 2, 1), 40)
+        val openLibraryLimit = min(max(maxResults - googleLimit, 1), 50)
+        val googleBooks = getGoogleBooks(query, googleLimit)
+        val openLibraryBooks = getOpenLibraryBooks(query, openLibraryLimit)
+
+        return (googleBooks + openLibraryBooks)
+            .distinctBy { it.externalId ?: "${it.source}:${it.title.lowercase()}" }
+            .take(maxResults)
+    }
+
+    private suspend fun getGoogleBooks(query: String, limit: Int): List<Book> {
+        return runCatching {
+            bookService.bookSearch(query, limit).items.map { it.toBook() }
+        }.getOrDefault(emptyList())
+    }
+
+    private suspend fun getOpenLibraryBooks(query: String, limit: Int): List<Book> {
+        val openLibraryQuery = query.removePrefix("subject:").trim().ifBlank { query }
+        return runCatching {
+            openLibraryService.searchBooks(openLibraryQuery, limit).docs.map { it.toBook() }
+        }.getOrDefault(emptyList())
     }
 
     private fun Items.toBook(): Book {

@@ -296,6 +296,7 @@ app/src/main/java/com/finenkodenis/bookshelf/ui/theme/screens/SearchScreen.kt
 
 - поле поиска;
 - кнопку поиска;
+- выбор источника книг;
 - быстрые жанровые фильтры;
 - список найденных книг.
 

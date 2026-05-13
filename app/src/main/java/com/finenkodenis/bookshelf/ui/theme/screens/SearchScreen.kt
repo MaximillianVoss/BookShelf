@@ -23,6 +23,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.finenkodenis.bookshelf.data.Book
 import com.finenkodenis.bookshelf.data.BookGenre
+import com.finenkodenis.bookshelf.data.BookSearchSource
 import com.finenkodenis.bookshelf.ui.theme.BooksUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -31,8 +32,11 @@ fun SearchScreen(
     booksUiState: BooksUiState,
     searchText: String,
     genres: List<BookGenre>,
+    sources: List<BookSearchSource>,
+    selectedSource: BookSearchSource,
     onSearchTextChange: (String) -> Unit,
     onSearch: (String) -> Unit,
+    onSourceSelected: (BookSearchSource) -> Unit,
     onGenreClicked: (BookGenre) -> Unit,
     onBookClicked: (Book) -> Unit,
     retryAction: () -> Unit,
@@ -58,6 +62,12 @@ fun SearchScreen(
                 Text("Найти")
             }
         }
+        SourceCatalog(
+            sources = sources,
+            selectedSource = selectedSource,
+            onSourceSelected = onSourceSelected,
+            modifier = Modifier.fillMaxWidth()
+        )
         GenreCatalog(
             genres = genres,
             onGenreClicked = onGenreClicked,
@@ -72,6 +82,47 @@ fun SearchScreen(
                 onBookClicked = onBookClicked
             )
             is BooksUiState.Error -> ErrorScreen(retryAction = retryAction, modifier = Modifier.fillMaxSize())
+        }
+    }
+}
+
+@Composable
+private fun SourceCatalog(
+    sources: List<BookSearchSource>,
+    selectedSource: BookSearchSource,
+    onSourceSelected: (BookSearchSource) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.padding(start = 12.dp, end = 12.dp, bottom = 8.dp)) {
+        Text(
+            text = "Источник книг",
+            style = MaterialTheme.typography.titleMedium
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(top = 8.dp),
+        ) {
+            sources.forEach { source ->
+                val selected = source == selectedSource
+                val buttonModifier = Modifier.padding(end = 8.dp)
+                if (selected) {
+                    Button(
+                        onClick = { onSourceSelected(source) },
+                        modifier = buttonModifier
+                    ) {
+                        Text(text = source.title, maxLines = 1)
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = { onSourceSelected(source) },
+                        modifier = buttonModifier
+                    ) {
+                        Text(text = source.title, maxLines = 1)
+                    }
+                }
+            }
         }
     }
 }

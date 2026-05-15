@@ -122,6 +122,7 @@ fun BooksApp(modifier: Modifier = Modifier) {
                     libraryBook = viewModel.selectedLibraryBook,
                     onBack = viewModel::closeBookDetails,
                     onSave = viewModel::saveSelectedBook,
+                    onDelete = viewModel::deleteSelectedBook,
                     onAddReadingSession = viewModel::addReadingSession,
                     onReadInApp = viewModel::openReader
                 )

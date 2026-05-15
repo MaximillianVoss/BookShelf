@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -19,6 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -47,6 +49,7 @@ fun BookDetailScreen(
     libraryBook: LibraryBook?,
     onBack: () -> Unit,
     onSave: (ReadingStatus, Int?, String?) -> Unit,
+    onDelete: () -> Unit,
     onAddReadingSession: (Long, Int, Int) -> Unit,
     onReadInApp: (Book) -> Unit,
     modifier: Modifier = Modifier
@@ -65,6 +68,7 @@ fun BookDetailScreen(
     var review by remember { mutableStateOf(libraryBook?.review.orEmpty()) }
     var minutesRead by remember { mutableStateOf("20") }
     var pagesRead by remember { mutableStateOf("10") }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
 
     LaunchedEffect(book.localId, libraryBook?.userBookId) {
         status = libraryBook?.status ?: ReadingStatus.WANT_TO_READ
@@ -170,6 +174,16 @@ fun BookDetailScreen(
         }
 
         if (libraryBook != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = { showDeleteConfirmation = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Удалить из библиотеки")
+            }
+        }
+
+        if (libraryBook != null) {
             Spacer(modifier = Modifier.height(16.dp))
             Card(
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -214,10 +228,28 @@ fun BookDetailScreen(
         if (book.categories.isNotEmpty()) {
             Spacer(modifier = Modifier.height(16.dp))
             Text("Жанры и темы", style = MaterialTheme.typography.titleMedium)
-            Text(
-                text = book.categories.joinToString(", "),
-                style = MaterialTheme.typography.bodyMedium
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                book.categories.forEach { category ->
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        )
+                    ) {
+                        Text(
+                            text = category,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
+                    }
+                }
+            }
         }
 
         if (!book.description.isNullOrBlank()) {
@@ -235,6 +267,29 @@ fun BookDetailScreen(
             ) {
                 Text("Читать в приложении")
             }
+        }
+
+        if (showDeleteConfirmation) {
+            AlertDialog(
+                onDismissRequest = { showDeleteConfirmation = false },
+                title = { Text("Удалить книгу?") },
+                text = { Text("Книга будет удалена из вашей библиотеки вместе с сохраненными днями чтения.") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showDeleteConfirmation = false
+                            onDelete()
+                        }
+                    ) {
+                        Text("Удалить")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteConfirmation = false }) {
+                        Text("Отмена")
+                    }
+                }
+            )
         }
     }
 }

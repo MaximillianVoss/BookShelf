@@ -98,7 +98,7 @@ class NetworkBooksRepository(
             title = title?.takeIf { it.isNotBlank() } ?: "Без названия",
             authors = authors.orEmpty(),
             description = firstSentenceText,
-            categories = subjects.orEmpty().take(MAX_CATEGORIES),
+            categories = subjects.orEmpty().toBookCategories(),
             publishedDate = firstPublishYear?.toString(),
             pageCount = null,
             language = languages.orEmpty().firstOrNull(),
@@ -117,7 +117,7 @@ class NetworkBooksRepository(
             title = title?.takeIf { it.isNotBlank() } ?: return null,
             authors = authors.mapNotNull { it.name?.takeIf(String::isNotBlank) },
             description = summaries.firstOrNull(),
-            categories = subjects.take(MAX_CATEGORIES),
+            categories = (subjects + bookshelves).toBookCategories(),
             publishedDate = null,
             pageCount = null,
             language = languages.firstOrNull(),
@@ -134,7 +134,7 @@ class NetworkBooksRepository(
             title = title.asTextList().firstOrNull()?.takeIf { it.isNotBlank() } ?: return null,
             authors = creator.asTextList(),
             description = description.asTextList().firstOrNull(),
-            categories = subject.asTextList().take(MAX_CATEGORIES),
+            categories = subject.asTextList().toBookCategories(),
             publishedDate = date.asTextList().firstOrNull(),
             pageCount = null,
             language = language.asTextList().firstOrNull(),
@@ -152,7 +152,7 @@ class NetworkBooksRepository(
             title = titleValue,
             authors = (creator.asTextList() + contributor.asTextList()).distinct(),
             description = description.asTextList().firstOrNull(),
-            categories = subject.asTextList().take(MAX_CATEGORIES),
+            categories = (subject.asTextList() + genre.asTextList()).toBookCategories(),
             publishedDate = date,
             pageCount = null,
             language = language.asTextList().firstOrNull(),
@@ -169,10 +169,7 @@ class NetworkBooksRepository(
         val requestedCategory = query.toRequestedCategory() ?: return this
         return map { book ->
             val mergedCategories = (listOf(requestedCategory) + book.categories)
-                .map { it.trim() }
-                .filter { it.isNotBlank() }
-                .distinctBy { it.lowercase() }
-                .take(MAX_CATEGORIES)
+                .toBookCategories()
             book.copy(categories = mergedCategories)
         }
     }
@@ -212,6 +209,34 @@ class NetworkBooksRepository(
         }.map { it.trim() }.filter { it.isNotBlank() }.distinct()
     }
 
+    private fun List<String>.toBookCategories(): List<String> {
+        return flatMap { it.splitCategoryText() }
+            .map { it.trimCategoryLabel() }
+            .filter { it.isUsefulCategory() }
+            .distinctBy { it.lowercase() }
+            .take(MAX_CATEGORIES)
+    }
+
+    private fun String.splitCategoryText(): List<String> {
+        return split(",", ";")
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+    }
+
+    private fun String.trimCategoryLabel(): String {
+        return removePrefix("Category:")
+            .replace("_", " ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+    }
+
+    private fun String.isUsefulCategory(): Boolean {
+        val normalized = lowercase()
+        return isNotBlank() &&
+            length <= MAX_CATEGORY_LENGTH &&
+            normalized !in IGNORED_CATEGORY_LABELS
+    }
+
     private fun Map<String, String>.firstValueForPrefix(prefix: String): String? {
         return entries.firstOrNull { it.key.startsWith(prefix) }?.value?.takeIf { it.isNotBlank() }
     }
@@ -226,5 +251,13 @@ class NetworkBooksRepository(
         const val REMOTE_SOURCE_COUNT = 4
         const val MIN_RESULTS_PER_SOURCE = 6
         const val MAX_CATEGORIES = 8
+        const val MAX_CATEGORY_LENGTH = 80
+
+        val IGNORED_CATEGORY_LABELS = setOf(
+            "catalog",
+            "general collections",
+            "open library staff picks",
+            "open syllabus project"
+        )
     }
 }

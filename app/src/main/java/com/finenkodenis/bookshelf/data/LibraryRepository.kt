@@ -100,6 +100,10 @@ class LibraryRepository(
         )
     }
 
+    suspend fun deleteLibraryBook(userBookId: Long) {
+        userBookDao.deleteById(userBookId)
+    }
+
     suspend fun addReadingSession(
         userBookId: Long,
         minutesRead: Int,

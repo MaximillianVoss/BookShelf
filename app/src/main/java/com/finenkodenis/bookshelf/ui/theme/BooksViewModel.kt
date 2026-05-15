@@ -350,6 +350,17 @@ class BooksViewModel(
         }
     }
 
+    fun deleteSelectedBook() {
+        val libraryBook = selectedLibraryBook ?: return
+
+        viewModelScope.launch {
+            libraryRepository.deleteLibraryBook(libraryBook.userBookId)
+            currentSection = AppSection.LIBRARY
+            selectedBook = null
+            selectedLibraryBook = null
+        }
+    }
+
     fun addReadingSession(userBookId: Long, minutesRead: Int, pagesRead: Int) {
         viewModelScope.launch {
             libraryRepository.addReadingSession(

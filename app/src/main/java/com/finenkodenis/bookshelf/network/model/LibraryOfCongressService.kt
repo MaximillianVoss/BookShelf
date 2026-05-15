@@ -34,6 +34,8 @@ data class LibraryOfCongressItem(
     val creator: JsonElement? = null,
     @SerializedName("subject")
     val subject: JsonElement? = null,
+    @SerializedName("genre")
+    val genre: JsonElement? = null,
     @SerializedName("language")
     val language: JsonElement? = null,
     @SerializedName("image_url")

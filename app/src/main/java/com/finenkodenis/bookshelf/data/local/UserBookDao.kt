@@ -60,6 +60,9 @@ interface UserBookDao {
     @Update
     suspend fun update(userBook: UserBookEntity)
 
+    @Query("DELETE FROM user_books WHERE user_book_id = :userBookId")
+    suspend fun deleteById(userBookId: Long)
+
     @Query(
         """
         SELECT * FROM user_books

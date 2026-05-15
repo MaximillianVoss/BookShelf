@@ -18,6 +18,7 @@ import com.finenkodenis.bookshelf.network.model.LibraryOfCongressItem
 import com.finenkodenis.bookshelf.network.model.LibraryOfCongressSearchResponse
 import com.finenkodenis.bookshelf.network.model.LibraryOfCongressService
 import com.finenkodenis.bookshelf.network.model.OpenLibraryDoc
+import com.finenkodenis.bookshelf.network.model.OPEN_LIBRARY_SEARCH_FIELDS
 import com.finenkodenis.bookshelf.network.model.OpenLibrarySearchResponse
 import com.finenkodenis.bookshelf.network.model.OpenLibraryService
 import com.google.gson.JsonArray
@@ -55,6 +56,7 @@ class NetworkBooksRepositoryTest {
         val books = repository.getBooks("subject:adventure", maxResults = 5, source = BookSearchSource.OPEN_LIBRARY)
 
         assertEquals("adventure", openLibraryService.receivedQuery)
+        assertEquals(OPEN_LIBRARY_SEARCH_FIELDS, openLibraryService.receivedFields)
         assertEquals(listOf("Adventure"), books.single().categories)
     }
 
@@ -69,7 +71,7 @@ class NetworkBooksRepositoryTest {
         assertEquals("Pride and Prejudice", book.title)
         assertEquals(listOf("Austen, Jane"), book.authors)
         assertEquals("A classic novel.", book.description)
-        assertEquals(listOf("Courtship -- Fiction", "England -- Fiction"), book.categories)
+        assertEquals(listOf("Courtship -- Fiction", "England -- Fiction", "Classics of Literature"), book.categories)
         assertEquals("en", book.language)
         assertEquals("https://www.gutenberg.org/files/1342/1342-h/1342-h.htm", book.previewLink)
         assertEquals("https://www.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg", book.imageLink)
@@ -89,7 +91,7 @@ class NetworkBooksRepositoryTest {
         assertEquals("War and Peace", book.title)
         assertEquals(listOf("Tolstoy, Leo"), book.authors)
         assertEquals("Novel description", book.description)
-        assertEquals(listOf("Russia", "Fiction"), book.categories)
+        assertEquals(listOf("Russia", "Fiction", "War"), book.categories)
         assertEquals("1869", book.publishedDate)
         assertEquals("eng", book.language)
         assertEquals("https://archive.org/details/warandpeace00tols", book.previewLink)
@@ -108,7 +110,7 @@ class NetworkBooksRepositoryTest {
         assertEquals("Little Women", book.title)
         assertEquals(listOf("Alcott, Louisa May"), book.authors)
         assertEquals("Digitized book description", book.description)
-        assertEquals(listOf("Domestic fiction", "Sisters"), book.categories)
+        assertEquals(listOf("Domestic fiction", "Sisters", "Mystery"), book.categories)
         assertEquals("1868", book.publishedDate)
         assertEquals("English", book.language)
         assertEquals("https://www.loc.gov/item/12000001/", book.previewLink)
@@ -148,13 +150,21 @@ class NetworkBooksRepositoryTest {
     }
 
     private class EmptyOpenLibraryService : OpenLibraryService {
-        override suspend fun searchBooks(query: String, limit: Int): OpenLibrarySearchResponse {
+        override suspend fun searchBooks(
+            query: String,
+            limit: Int,
+            fields: String
+        ): OpenLibrarySearchResponse {
             return OpenLibrarySearchResponse()
         }
     }
 
     private class StaticOpenLibraryService : OpenLibraryService {
-        override suspend fun searchBooks(query: String, limit: Int): OpenLibrarySearchResponse {
+        override suspend fun searchBooks(
+            query: String,
+            limit: Int,
+            fields: String
+        ): OpenLibrarySearchResponse {
             return OpenLibrarySearchResponse(
                 docs = listOf(
                     OpenLibraryDoc(
@@ -174,9 +184,15 @@ class NetworkBooksRepositoryTest {
 
     private class CapturingOpenLibraryWithoutSubjectsService : OpenLibraryService {
         var receivedQuery: String? = null
+        var receivedFields: String? = null
 
-        override suspend fun searchBooks(query: String, limit: Int): OpenLibrarySearchResponse {
+        override suspend fun searchBooks(
+            query: String,
+            limit: Int,
+            fields: String
+        ): OpenLibrarySearchResponse {
             receivedQuery = query
+            receivedFields = fields
             return OpenLibrarySearchResponse(
                 docs = listOf(
                     OpenLibraryDoc(
@@ -204,7 +220,8 @@ class NetworkBooksRepositoryTest {
                         id = 1342,
                         title = "Pride and Prejudice",
                         authors = listOf(GutendexPerson("Austen, Jane")),
-                        subjects = listOf("Courtship -- Fiction", "England -- Fiction"),
+                        subjects = listOf("Courtship -- Fiction, England -- Fiction"),
+                        bookshelves = listOf("Category: Classics of Literature"),
                         summaries = listOf("A classic novel."),
                         languages = listOf("en"),
                         formats = mapOf(
@@ -254,7 +271,7 @@ class NetworkBooksRepositoryTest {
                             title = JsonPrimitive("War and Peace"),
                             creator = JsonPrimitive("Tolstoy, Leo"),
                             description = JsonPrimitive("Novel description"),
-                            subject = jsonArrayOf("Russia", "Fiction"),
+                            subject = JsonPrimitive("Russia, Fiction; War"),
                             date = JsonPrimitive("1869"),
                             language = JsonPrimitive("eng")
                         )
@@ -289,6 +306,7 @@ class NetworkBooksRepositoryTest {
                         creator = JsonPrimitive("Alcott, Louisa May"),
                         description = jsonArrayOf("Digitized book description"),
                         subject = jsonArrayOf("Domestic fiction", "Sisters"),
+                        genre = JsonPrimitive("Mystery"),
                         language = JsonPrimitive("English"),
                         imageUrl = listOf("https://www.loc.gov/static/images/little-women.jpg")
                     )

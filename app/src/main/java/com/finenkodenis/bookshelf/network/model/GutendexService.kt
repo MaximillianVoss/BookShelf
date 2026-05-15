@@ -25,6 +25,8 @@ data class GutendexBook(
     val authors: List<GutendexPerson> = emptyList(),
     @SerializedName("subjects")
     val subjects: List<String> = emptyList(),
+    @SerializedName("bookshelves")
+    val bookshelves: List<String> = emptyList(),
     @SerializedName("summaries")
     val summaries: List<String> = emptyList(),
     @SerializedName("languages")

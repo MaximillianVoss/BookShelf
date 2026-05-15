@@ -8,9 +8,13 @@ interface OpenLibraryService {
     @GET("search.json")
     suspend fun searchBooks(
         @Query("q") query: String,
-        @Query("limit") limit: Int
+        @Query("limit") limit: Int,
+        @Query("fields") fields: String = OPEN_LIBRARY_SEARCH_FIELDS
     ): OpenLibrarySearchResponse
 }
+
+const val OPEN_LIBRARY_SEARCH_FIELDS =
+    "key,title,author_name,first_publish_year,subject,language,cover_i,first_sentence"
 
 data class OpenLibrarySearchResponse(
     @SerializedName("docs")

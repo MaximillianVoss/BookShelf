@@ -2,6 +2,8 @@
 
 Документ описывает основные классы Android-приложения BookShelf и их роль в проекте.
 
+Актуальная API-версия находится в ветке `api-sources-no-key`. В ней используются только источники, которые работают без API-ключей, OAuth-токенов и антибот-проверок: Open Library, Gutendex, Internet Archive и Library of Congress.
+
 Базовый пакет приложения:
 
 ```text
@@ -522,6 +524,17 @@ suspend fun getBooks(query: String, maxResults: Int, source: BookSearchSource): 
 
 Параметр `source` задает источник поиска: все источники, только Open Library, Gutendex, Internet Archive, Library of Congress или локальный каталог.
 
+Значения `BookSearchSource`:
+
+| Значение | Название в UI | Назначение |
+|---|---|---|
+| `ALL` | Все | Поиск во всех внешних API с объединением и дедупликацией |
+| `OPEN_LIBRARY` | Open Library | Поиск только через Open Library Search API |
+| `GUTENDEX` | Gutendex | Поиск только по Project Gutenberg metadata |
+| `INTERNET_ARCHIVE` | Internet Archive | Поиск только в Internet Archive Advanced Search |
+| `LIBRARY_OF_CONGRESS` | Library of Congress | Поиск только в loc.gov JSON API |
+| `LOCAL` | Локальный каталог | Резервный встроенный набор книг |
+
 ### `NetworkBooksRepository`
 
 Файл:
@@ -547,9 +560,11 @@ app/src/main/java/com/finenkodenis/bookshelf/data/BooksRepository.kt
 3. Для режима `ALL` запрашивает все внешние API независимо друг от друга.
 4. Выполняет сетевые запросы через Retrofit.
 5. Преобразует API-модели в доменную модель `Book`.
-6. Удаляет дубликаты.
+6. Удаляет дубликаты по нормализованному названию и первому автору.
 7. Если общий список пустой, использует `fallbackBooksForQuery`.
 8. Для конкретного выбранного источника не подменяет результат fallback-каталогом, чтобы пользователь видел реальное состояние выбранного API.
+
+Такой подход позволяет показывать результаты из работающих API, даже если один из источников временно вернул ошибку или пустой ответ.
 
 ### `LibraryRepository`
 
@@ -1194,6 +1209,53 @@ app/src/main/java/com/finenkodenis/bookshelf/network/model/OpenLibraryService.kt
 
 `NetworkBooksRepository` преобразует их в общую доменную модель `Book`.
 
+### Модели Gutendex
+
+Файл:
+
+```text
+app/src/main/java/com/finenkodenis/bookshelf/network/model/GutendexService.kt
+```
+
+Основные модели:
+
+- `GutendexSearchResponse`;
+- `GutendexBook`;
+- `GutendexPerson`.
+
+Из `formats` выбираются ссылки на HTML/TXT-версию книги и обложку `image/jpeg`. Это полезно для встроенного чтения через `ReaderScreen`.
+
+### Модели Internet Archive
+
+Файл:
+
+```text
+app/src/main/java/com/finenkodenis/bookshelf/network/model/InternetArchiveService.kt
+```
+
+Основные модели:
+
+- `InternetArchiveSearchResponse`;
+- `InternetArchiveResponse`;
+- `InternetArchiveDoc`.
+
+Некоторые поля Internet Archive могут приходить строкой, массивом или объектом, поэтому в `NetworkBooksRepository` используется универсальное преобразование `JsonElement` в список строк.
+
+### Модели Library of Congress
+
+Файл:
+
+```text
+app/src/main/java/com/finenkodenis/bookshelf/network/model/LibraryOfCongressService.kt
+```
+
+Основные модели:
+
+- `LibraryOfCongressSearchResponse`;
+- `LibraryOfCongressItem`.
+
+Для автора объединяются поля `creator` и `contributor`, для жанров используются `subject`, для обложки берется первый элемент `image_url`.
+
 ## Вспомогательные функции
 
 ### `toSecureImageUrl`
@@ -1308,6 +1370,7 @@ app/src/test/java/com/finenkodenis/bookshelf
 - `RecommendationEngineTest` проверяет подбор жанров и фильтрацию уже добавленных книг.
 - `FallbackBooksTest` проверяет резервный каталог.
 - `BookImageUrlTest` проверяет обработку URL обложек.
+- `NetworkBooksRepositoryTest` проверяет преобразование ответов Open Library, Gutendex, Internet Archive и Library of Congress, а также устойчивость режима `ALL`.
 - `ReadingTimerTest` проверяет учет минут чтения.
 - `DemoLibrarySeedTest` проверяет состав демо-данных.
 

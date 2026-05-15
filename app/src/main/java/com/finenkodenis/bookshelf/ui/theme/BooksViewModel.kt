@@ -331,10 +331,21 @@ class BooksViewModel(
             )
         }
 
+        val yandexBooks = runCatching {
+            booksRepository.getBooks(query, maxResults, BookSearchSource.YANDEX_HTML)
+        }.getOrDefault(emptyList())
+
+        if (yandexBooks.isNotEmpty()) {
+            return BooksUiState.Success(
+                yandexBooks,
+                "$reason Результаты: HTML-парсер сайта Яндекс Книги (резервный источник)."
+            )
+        }
+
         return loadOpenLibraryFallback(
             query = query,
             maxResults = maxResults,
-            message = "$reason HTML-парсер ничего не вернул."
+            message = "$reason HTML-парсеры Open Library и Яндекс Книг ничего не вернули."
         )
     }
 
@@ -361,6 +372,7 @@ class BooksViewModel(
             BookSearchSource.GOOGLE -> "Не удалось подключиться к Google Books. Проверьте интернет или выберите другой источник."
             BookSearchSource.OPEN_LIBRARY -> "Не удалось подключиться к Open Library. Проверьте интернет или выберите другой источник."
             BookSearchSource.HTML_PARSER -> "Не удалось загрузить HTML-страницу поиска. Проверьте интернет или выберите другой источник."
+            BookSearchSource.YANDEX_HTML -> "Не удалось загрузить HTML-страницу Яндекс Книг. Проверьте интернет или выберите другой источник."
             else -> "Не удалось загрузить книги. Проверьте интернет и повторите попытку."
         }
     }
@@ -379,6 +391,8 @@ class BooksViewModel(
                 "Не удалось загрузить книги из Open Library: HTTP ${error.code()}."
             source == BookSearchSource.HTML_PARSER ->
                 "Не удалось загрузить HTML-страницу поиска: HTTP ${error.code()}."
+            source == BookSearchSource.YANDEX_HTML ->
+                "Не удалось загрузить HTML-страницу Яндекс Книг: HTTP ${error.code()}."
             else ->
                 "Не удалось загрузить книги: HTTP ${error.code()}."
         }

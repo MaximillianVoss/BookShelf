@@ -8,11 +8,13 @@ import com.finenkodenis.bookshelf.data.GOOGLE_BOOKS_SOURCE
 import com.finenkodenis.bookshelf.data.NetworkBooksRepository
 import com.finenkodenis.bookshelf.data.OPEN_LIBRARY_HTML_SOURCE
 import com.finenkodenis.bookshelf.data.OPEN_LIBRARY_SOURCE
+import com.finenkodenis.bookshelf.data.YANDEX_BOOKS_HTML_SOURCE
 import com.finenkodenis.bookshelf.network.model.BookService
 import com.finenkodenis.bookshelf.network.model.HtmlBookSearchService
 import com.finenkodenis.bookshelf.network.model.OpenLibraryDoc
 import com.finenkodenis.bookshelf.network.model.OpenLibrarySearchResponse
 import com.finenkodenis.bookshelf.network.model.OpenLibraryService
+import com.finenkodenis.bookshelf.network.model.YandexBooksHtmlService
 import kotlinx.coroutines.test.runTest
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody
@@ -77,6 +79,21 @@ class NetworkBooksRepositoryTest {
         assertEquals(OPEN_LIBRARY_HTML_SOURCE, books.single().source)
     }
 
+    @Test
+    fun yandexHtmlSource_readsBooksFromSearchPageHtml() = runTest {
+        val repository = NetworkBooksRepository(
+            bookService = FailingGoogleBooksService(),
+            openLibraryService = EmptyOpenLibraryService(),
+            yandexBooksHtmlService = StaticYandexBooksHtmlService(YANDEX_HTML_SEARCH_RESULT),
+            googleBooksApiKey = ""
+        )
+
+        val books = repository.getBooks("война и мир", maxResults = 5, source = BookSearchSource.YANDEX_HTML)
+
+        assertEquals("Война и мир", books.single().title)
+        assertEquals(YANDEX_BOOKS_HTML_SOURCE, books.single().source)
+    }
+
     private class CapturingGoogleBooksService(
         private val response: BookShelf
     ) : BookService {
@@ -130,6 +147,17 @@ class NetworkBooksRepositoryTest {
         }
     }
 
+    private class StaticYandexBooksHtmlService(
+        private val html: String
+    ) : YandexBooksHtmlService {
+        var receivedEncodedQuery: String? = null
+
+        override suspend fun searchBooksHtml(encodedQuery: String): Response<ResponseBody> {
+            receivedEncodedQuery = encodedQuery
+            return Response.success(html.toResponseBody("text/html".toMediaType()))
+        }
+    }
+
     private companion object {
         const val HTML_SEARCH_RESULT = """
             <html>
@@ -141,6 +169,18 @@ class NetworkBooksRepositoryTest {
                     </h3>
                   </div>
                 </li>
+              </body>
+            </html>
+        """
+
+        const val YANDEX_HTML_SEARCH_RESULT = """
+            <html>
+              <body>
+                <div data-test-id="SNIPPET">
+                  <div data-test-id="SNIPPET_TITLE">
+                    <a href="/books/TXGRits7">Война и мир</a>
+                  </div>
+                </div>
               </body>
             </html>
         """

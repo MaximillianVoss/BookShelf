@@ -5,6 +5,8 @@ import com.finenkodenis.bookshelf.network.model.BookService
 import com.finenkodenis.bookshelf.network.model.HtmlBookSearchService
 import com.finenkodenis.bookshelf.network.model.OpenLibraryDoc
 import com.finenkodenis.bookshelf.network.model.OpenLibraryService
+import com.finenkodenis.bookshelf.network.model.YandexBooksHtmlService
+import java.net.URLEncoder
 import kotlin.math.max
 import kotlin.math.min
 
@@ -20,6 +22,7 @@ class NetworkBooksRepository(
     private val bookService: BookService,
     private val openLibraryService: OpenLibraryService,
     private val htmlBookSearchService: HtmlBookSearchService? = null,
+    private val yandexBooksHtmlService: YandexBooksHtmlService? = null,
     private val googleBooksApiKey: String = ""
 ) : BooksRepository {
     override suspend fun getBooks(
@@ -33,6 +36,7 @@ class NetworkBooksRepository(
             BookSearchSource.GOOGLE -> getGoogleBooks(normalizedQuery, min(max(maxResults, 1), 40))
             BookSearchSource.OPEN_LIBRARY -> getOpenLibraryBooks(normalizedQuery, min(max(maxResults, 1), 50))
             BookSearchSource.HTML_PARSER -> getHtmlParsedBooks(normalizedQuery, maxResults)
+            BookSearchSource.YANDEX_HTML -> getYandexHtmlBooks(normalizedQuery, maxResults)
             BookSearchSource.LOCAL -> emptyList()
         }
 
@@ -55,8 +59,13 @@ class NetworkBooksRepository(
         } else {
             emptyList()
         }
+        val yandexBooks = if (googleBooks.size + openLibraryBooks.size + htmlBooks.size < maxResults) {
+            runCatching { getYandexHtmlBooks(query, maxResults) }.getOrDefault(emptyList())
+        } else {
+            emptyList()
+        }
 
-        return (googleBooks + openLibraryBooks + htmlBooks)
+        return (googleBooks + openLibraryBooks + htmlBooks + yandexBooks)
             .distinctBy { it.externalId ?: "${it.source}:${it.title.lowercase()}" }
             .take(maxResults)
     }
@@ -78,6 +87,16 @@ class NetworkBooksRepository(
         if (!response.isSuccessful) return emptyList()
         val html = response.body()?.string().orEmpty()
         return OpenLibraryHtmlParser.parseSearchResults(html, limit)
+    }
+
+    private suspend fun getYandexHtmlBooks(query: String, limit: Int): List<Book> {
+        val service = yandexBooksHtmlService ?: return emptyList()
+        val yandexQuery = query.removePrefix("subject:").trim().ifBlank { query }
+        val encodedQuery = URLEncoder.encode(yandexQuery, "UTF-8").replace("+", "%20")
+        val response = service.searchBooksHtml(encodedQuery)
+        if (!response.isSuccessful) return emptyList()
+        val html = response.body()?.string().orEmpty()
+        return YandexBooksHtmlParser.parseSearchResults(html, limit)
     }
 
     private fun Items.toBook(): Book {

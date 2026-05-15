@@ -6,6 +6,7 @@ import com.finenkodenis.bookshelf.data.local.BooksDatabase
 import com.finenkodenis.bookshelf.network.model.BookService
 import com.finenkodenis.bookshelf.network.model.HtmlBookSearchService
 import com.finenkodenis.bookshelf.network.model.OpenLibraryService
+import com.finenkodenis.bookshelf.network.model.YandexBooksHtmlService
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
@@ -18,6 +19,7 @@ interface AppContainer {
 class DefaultAppContainer(context: Context) : AppContainer {
     private val googleBooksBaseUrl = "https://www.googleapis.com/books/v1/"
     private val openLibraryBaseUrl = "https://openlibrary.org/"
+    private val yandexBooksBaseUrl = "https://books.yandex.ru/"
 
     private val database = BooksDatabase.getDatabase(context)
 
@@ -29,6 +31,11 @@ class DefaultAppContainer(context: Context) : AppContainer {
     private val openLibraryRetrofit: Retrofit = Retrofit.Builder()
         .addConverterFactory(GsonConverterFactory.create())
         .baseUrl(openLibraryBaseUrl)
+        .build()
+
+    private val yandexBooksRetrofit: Retrofit = Retrofit.Builder()
+        .addConverterFactory(GsonConverterFactory.create())
+        .baseUrl(yandexBooksBaseUrl)
         .build()
 
     private val googleBooksService: BookService by lazy {
@@ -43,11 +50,16 @@ class DefaultAppContainer(context: Context) : AppContainer {
         openLibraryRetrofit.create(HtmlBookSearchService::class.java)
     }
 
+    private val yandexBooksHtmlService: YandexBooksHtmlService by lazy {
+        yandexBooksRetrofit.create(YandexBooksHtmlService::class.java)
+    }
+
     override val booksRepository: BooksRepository by lazy {
         NetworkBooksRepository(
             bookService = googleBooksService,
             openLibraryService = openLibraryService,
             htmlBookSearchService = htmlBookSearchService,
+            yandexBooksHtmlService = yandexBooksHtmlService,
             googleBooksApiKey = BuildConfig.GOOGLE_BOOKS_API_KEY
         )
     }

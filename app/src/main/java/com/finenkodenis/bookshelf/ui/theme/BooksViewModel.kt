@@ -69,6 +69,59 @@ internal fun shouldFallbackToOpenLibraryAfterGoogleError(
     return source == BookSearchSource.GOOGLE && (httpCode == null || httpCode == 429 || httpCode == 503)
 }
 
+internal suspend fun loadGoogleBooksFallbackState(
+    booksRepository: BooksRepository,
+    query: String,
+    maxResults: Int,
+    reason: String
+): BooksUiState {
+    val openLibraryApiBooks = runCatching {
+        booksRepository.getBooks(query, maxResults, BookSearchSource.OPEN_LIBRARY)
+    }.getOrDefault(emptyList())
+
+    if (openLibraryApiBooks.isNotEmpty()) {
+        return BooksUiState.Success(
+            openLibraryApiBooks,
+            "$reason Результаты: Open Library API (резервный источник)."
+        )
+    }
+
+    val htmlBooks = runCatching {
+        booksRepository.getBooks(query, maxResults, BookSearchSource.HTML_PARSER)
+    }.getOrDefault(emptyList())
+
+    if (htmlBooks.isNotEmpty()) {
+        return BooksUiState.Success(
+            htmlBooks,
+            "$reason Результаты: HTML-парсер сайта Open Library (резервный источник)."
+        )
+    }
+
+    val yandexBooks = runCatching {
+        booksRepository.getBooks(query, maxResults, BookSearchSource.YANDEX_HTML)
+    }.getOrDefault(emptyList())
+
+    if (yandexBooks.isNotEmpty()) {
+        return BooksUiState.Success(
+            yandexBooks,
+            "$reason Результаты: HTML-парсер сайта Яндекс Книги (резервный источник)."
+        )
+    }
+
+    val localBooks = runCatching {
+        booksRepository.getBooks(query, maxResults, BookSearchSource.LOCAL)
+    }.getOrDefault(emptyList())
+
+    return if (localBooks.isNotEmpty()) {
+        BooksUiState.Success(
+            localBooks,
+            "$reason Open Library API и HTML-парсеры ничего не вернули. Результаты: локальный каталог."
+        )
+    } else {
+        BooksUiState.Error("Google Books недоступен, резервные источники тоже не ответили. Выберите локальный каталог.")
+    }
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class BooksViewModel(
     private val booksRepository: BooksRepository,
@@ -320,51 +373,7 @@ class BooksViewModel(
         maxResults: Int,
         reason: String
     ): BooksUiState {
-        val htmlBooks = runCatching {
-            booksRepository.getBooks(query, maxResults, BookSearchSource.HTML_PARSER)
-        }.getOrDefault(emptyList())
-
-        if (htmlBooks.isNotEmpty()) {
-            return BooksUiState.Success(
-                htmlBooks,
-                "$reason Результаты: HTML-парсер сайта Open Library (резервный источник)."
-            )
-        }
-
-        val yandexBooks = runCatching {
-            booksRepository.getBooks(query, maxResults, BookSearchSource.YANDEX_HTML)
-        }.getOrDefault(emptyList())
-
-        if (yandexBooks.isNotEmpty()) {
-            return BooksUiState.Success(
-                yandexBooks,
-                "$reason Результаты: HTML-парсер сайта Яндекс Книги (резервный источник)."
-            )
-        }
-
-        return loadOpenLibraryFallback(
-            query = query,
-            maxResults = maxResults,
-            message = "$reason HTML-парсеры Open Library и Яндекс Книг ничего не вернули."
-        )
-    }
-
-    private suspend fun loadOpenLibraryFallback(
-        query: String,
-        maxResults: Int,
-        message: String
-    ): BooksUiState {
-        return try {
-            val openLibraryBooks = booksRepository.getBooks(query, maxResults, BookSearchSource.OPEN_LIBRARY)
-            if (openLibraryBooks.isNotEmpty()) {
-                BooksUiState.Success(openLibraryBooks, message)
-            } else {
-                val localBooks = booksRepository.getBooks(query, maxResults, BookSearchSource.LOCAL)
-                BooksUiState.Success(localBooks, "$message Open Library ничего не вернула. Результаты: локальный каталог.")
-            }
-        } catch (fallbackError: Exception) {
-            BooksUiState.Error("Google Books недоступен, резервный источник тоже не ответил. Выберите локальный каталог.")
-        }
+        return loadGoogleBooksFallbackState(booksRepository, query, maxResults, reason)
     }
 
     private fun networkErrorMessage(source: BookSearchSource): String {

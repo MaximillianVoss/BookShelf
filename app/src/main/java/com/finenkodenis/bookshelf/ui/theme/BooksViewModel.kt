@@ -293,26 +293,49 @@ class BooksViewModel(
                     BooksUiState.Success(booksRepository.getBooks(query, maxResults, source))
                 } catch (e: IOException) {
                     if (shouldFallbackToOpenLibraryAfterGoogleError(source)) {
-                        loadOpenLibraryFallback(
+                        loadGoogleBooksFallback(
                             query,
                             maxResults,
-                            "Выбран источник: Google Books. Результаты: Open Library (резервный источник), потому что Google Books недоступен по сети."
+                            "Выбран источник: Google Books. Google Books недоступен по сети."
                         )
                     } else {
                         BooksUiState.Error(networkErrorMessage(source))
                     }
                 } catch (e: HttpException) {
                     if (shouldFallbackToOpenLibraryAfterGoogleError(source, e.code())) {
-                        loadOpenLibraryFallback(
+                        loadGoogleBooksFallback(
                             query,
                             maxResults,
-                            "Выбран источник: Google Books. Результаты: Open Library (резервный источник), потому что Google Books вернул HTTP ${e.code()}."
+                            "Выбран источник: Google Books. Google Books вернул HTTP ${e.code()}."
                         )
                     } else {
                         BooksUiState.Error(httpErrorMessage(e, source))
                     }
                 }
         }
+    }
+
+    private suspend fun loadGoogleBooksFallback(
+        query: String,
+        maxResults: Int,
+        reason: String
+    ): BooksUiState {
+        val htmlBooks = runCatching {
+            booksRepository.getBooks(query, maxResults, BookSearchSource.HTML_PARSER)
+        }.getOrDefault(emptyList())
+
+        if (htmlBooks.isNotEmpty()) {
+            return BooksUiState.Success(
+                htmlBooks,
+                "$reason Результаты: HTML-парсер сайта Open Library (резервный источник)."
+            )
+        }
+
+        return loadOpenLibraryFallback(
+            query = query,
+            maxResults = maxResults,
+            message = "$reason HTML-парсер ничего не вернул."
+        )
     }
 
     private suspend fun loadOpenLibraryFallback(
@@ -337,6 +360,7 @@ class BooksViewModel(
         return when (source) {
             BookSearchSource.GOOGLE -> "Не удалось подключиться к Google Books. Проверьте интернет или выберите другой источник."
             BookSearchSource.OPEN_LIBRARY -> "Не удалось подключиться к Open Library. Проверьте интернет или выберите другой источник."
+            BookSearchSource.HTML_PARSER -> "Не удалось загрузить HTML-страницу поиска. Проверьте интернет или выберите другой источник."
             else -> "Не удалось загрузить книги. Проверьте интернет и повторите попытку."
         }
     }
@@ -353,6 +377,8 @@ class BooksViewModel(
                 "Не удалось загрузить книги из Google Books: HTTP ${error.code()}."
             source == BookSearchSource.OPEN_LIBRARY ->
                 "Не удалось загрузить книги из Open Library: HTTP ${error.code()}."
+            source == BookSearchSource.HTML_PARSER ->
+                "Не удалось загрузить HTML-страницу поиска: HTTP ${error.code()}."
             else ->
                 "Не удалось загрузить книги: HTTP ${error.code()}."
         }

@@ -4,6 +4,7 @@ import android.content.Context
 import com.finenkodenis.bookshelf.BuildConfig
 import com.finenkodenis.bookshelf.data.local.BooksDatabase
 import com.finenkodenis.bookshelf.network.model.BookService
+import com.finenkodenis.bookshelf.network.model.HtmlBookSearchService
 import com.finenkodenis.bookshelf.network.model.OpenLibraryService
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -38,10 +39,15 @@ class DefaultAppContainer(context: Context) : AppContainer {
         openLibraryRetrofit.create(OpenLibraryService::class.java)
     }
 
+    private val htmlBookSearchService: HtmlBookSearchService by lazy {
+        openLibraryRetrofit.create(HtmlBookSearchService::class.java)
+    }
+
     override val booksRepository: BooksRepository by lazy {
         NetworkBooksRepository(
             bookService = googleBooksService,
             openLibraryService = openLibraryService,
+            htmlBookSearchService = htmlBookSearchService,
             googleBooksApiKey = BuildConfig.GOOGLE_BOOKS_API_KEY
         )
     }

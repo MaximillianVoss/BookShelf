@@ -71,7 +71,7 @@ class NetworkBooksRepositoryTest {
         assertEquals("Pride and Prejudice", book.title)
         assertEquals(listOf("Austen, Jane"), book.authors)
         assertEquals("A classic novel.", book.description)
-        assertEquals(listOf("Courtship -- Fiction", "England -- Fiction", "Classics of Literature"), book.categories)
+        assertEquals(listOf("Fiction", "Juvenile fiction", "Classics of Literature"), book.categories)
         assertEquals("en", book.language)
         assertEquals("https://www.gutenberg.org/files/1342/1342-h/1342-h.htm", book.previewLink)
         assertEquals("https://www.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg", book.imageLink)
@@ -172,7 +172,14 @@ class NetworkBooksRepositoryTest {
                         title = "The Hobbit",
                         authors = listOf("J. R. R. Tolkien"),
                         firstPublishYear = 1937,
-                        subjects = listOf("Fantasy", "Adventure"),
+                        subjects = listOf(
+                            "Fantasy",
+                            "Adventure",
+                            "nyt:young-adult-paperback-monthly=2022-09-04",
+                            "etc.",
+                            "open_syllabus_project",
+                            "https://openlibrary.org/subjects/demo"
+                        ),
                         languages = listOf("eng"),
                         coverId = 12345,
                         firstSentence = listOf("In a hole in the ground there lived a hobbit.")
@@ -220,7 +227,11 @@ class NetworkBooksRepositoryTest {
                         id = 1342,
                         title = "Pride and Prejudice",
                         authors = listOf(GutendexPerson("Austen, Jane")),
-                        subjects = listOf("Courtship -- Fiction, England -- Fiction"),
+                        subjects = listOf(
+                            "Courtship -- Fiction, England -- Fiction",
+                            "Alice (Fictitious character from Carroll) -- Juvenile fiction",
+                            "young-adult-paperback-monthly"
+                        ),
                         bookshelves = listOf("Category: Classics of Literature"),
                         summaries = listOf("A classic novel."),
                         languages = listOf("en"),

@@ -315,11 +315,9 @@ class BooksViewModel(
         return try {
             val openLibraryBooks = booksRepository.getBooks(query, maxResults, BookSearchSource.OPEN_LIBRARY)
             if (openLibraryBooks.isNotEmpty()) {
-                selectedSearchSource = BookSearchSource.OPEN_LIBRARY
                 BooksUiState.Success(openLibraryBooks, message)
             } else {
                 val localBooks = booksRepository.getBooks(query, maxResults, BookSearchSource.LOCAL)
-                selectedSearchSource = BookSearchSource.LOCAL
                 BooksUiState.Success(localBooks, "$message Open Library ничего не вернула, показан локальный каталог.")
             }
         } catch (fallbackError: Exception) {

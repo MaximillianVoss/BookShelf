@@ -1,6 +1,7 @@
 package com.finenkodenis.bookshelf
 
 import com.example.bookshelf.BookShelf
+import com.example.bookshelf.ImageLinks
 import com.example.bookshelf.Items
 import com.example.bookshelf.VolumeInfo
 import com.finenkodenis.bookshelf.data.BookSearchSource
@@ -32,7 +33,17 @@ class NetworkBooksRepositoryTest {
                 items = arrayListOf(
                     Items(
                         id = "google-1",
-                        volumeInfo = VolumeInfo(title = "Dune")
+                        volumeInfo = VolumeInfo(
+                            title = "Dune",
+                            authors = arrayListOf("Frank Herbert"),
+                            description = "Desert planet epic",
+                            categories = arrayListOf("Science Fiction"),
+                            publishedDate = "1965",
+                            pageCount = 412,
+                            language = "en",
+                            previewLink = "https://books.google.com/books?id=google-1",
+                            imageLinks = ImageLinks(thumbnail = "https://books.google.com/cover.jpg")
+                        )
                     )
                 )
             )
@@ -46,8 +57,41 @@ class NetworkBooksRepositoryTest {
         val books = repository.getBooks("dune", maxResults = 5, source = BookSearchSource.GOOGLE)
 
         assertEquals("test-google-key", googleService.receivedApiKey)
-        assertEquals("Dune", books.single().title)
-        assertEquals(GOOGLE_BOOKS_SOURCE, books.single().source)
+        val book = books.single()
+        assertEquals("google-1", book.externalId)
+        assertEquals("Dune", book.title)
+        assertEquals(listOf("Frank Herbert"), book.authors)
+        assertEquals("Desert planet epic", book.description)
+        assertEquals(listOf("Science Fiction"), book.categories)
+        assertEquals("1965", book.publishedDate)
+        assertEquals(412, book.pageCount)
+        assertEquals("en", book.language)
+        assertEquals("https://books.google.com/books?id=google-1", book.previewLink)
+        assertEquals("https://books.google.com/cover.jpg", book.imageLink)
+        assertEquals(GOOGLE_BOOKS_SOURCE, book.source)
+    }
+
+    @Test
+    fun openLibrarySource_mapsApiFieldsToBook() = runTest {
+        val repository = NetworkBooksRepository(
+            bookService = FailingGoogleBooksService(),
+            openLibraryService = StaticOpenLibraryService(),
+            googleBooksApiKey = ""
+        )
+
+        val books = repository.getBooks("hobbit", maxResults = 5, source = BookSearchSource.OPEN_LIBRARY)
+
+        val book = books.single()
+        assertEquals("/works/OL262758W", book.externalId)
+        assertEquals("The Hobbit", book.title)
+        assertEquals(listOf("J. R. R. Tolkien"), book.authors)
+        assertEquals("In a hole in the ground there lived a hobbit.", book.description)
+        assertEquals(listOf("Fantasy", "Adventure"), book.categories)
+        assertEquals("1937", book.publishedDate)
+        assertEquals("eng", book.language)
+        assertEquals("https://openlibrary.org/works/OL262758W", book.previewLink)
+        assertEquals("https://covers.openlibrary.org/b/id/12345-M.jpg", book.imageLink)
+        assertEquals(OPEN_LIBRARY_SOURCE, book.source)
     }
 
     @Test
@@ -81,15 +125,17 @@ class NetworkBooksRepositoryTest {
 
     @Test
     fun yandexHtmlSource_readsBooksFromSearchPageHtml() = runTest {
+        val yandexService = StaticYandexBooksHtmlService(YANDEX_HTML_SEARCH_RESULT)
         val repository = NetworkBooksRepository(
             bookService = FailingGoogleBooksService(),
             openLibraryService = EmptyOpenLibraryService(),
-            yandexBooksHtmlService = StaticYandexBooksHtmlService(YANDEX_HTML_SEARCH_RESULT),
+            yandexBooksHtmlService = yandexService,
             googleBooksApiKey = ""
         )
 
         val books = repository.getBooks("война и мир", maxResults = 5, source = BookSearchSource.YANDEX_HTML)
 
+        assertEquals("%D0%B2%D0%BE%D0%B9%D0%BD%D0%B0%20%D0%B8%20%D0%BC%D0%B8%D1%80", yandexService.receivedEncodedQuery)
         assertEquals("Война и мир", books.single().title)
         assertEquals(YANDEX_BOOKS_HTML_SOURCE, books.single().source)
     }
@@ -132,7 +178,12 @@ class NetworkBooksRepositoryTest {
                     OpenLibraryDoc(
                         key = "/works/OL262758W",
                         title = "The Hobbit",
-                        authors = listOf("J. R. R. Tolkien")
+                        authors = listOf("J. R. R. Tolkien"),
+                        firstPublishYear = 1937,
+                        subjects = listOf("Fantasy", "Adventure"),
+                        languages = listOf("eng"),
+                        coverId = 12345,
+                        firstSentence = listOf("In a hole in the ground there lived a hobbit.")
                     )
                 )
             )

@@ -10,7 +10,7 @@ class BookSearchSourceTest {
         val titles = BookSearchSource.values().map { it.title }
 
         assertEquals(
-            listOf("Все", "Open Library", "Open Library HTML", "Яндекс Книги", "Локальный каталог"),
+            listOf("Все", "Open Library", "Open Library HTML", "Google Books HTML", "Локальный каталог"),
             titles
         )
     }

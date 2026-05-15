@@ -2,9 +2,9 @@ package com.finenkodenis.bookshelf.data
 
 import android.content.Context
 import com.finenkodenis.bookshelf.data.local.BooksDatabase
+import com.finenkodenis.bookshelf.network.model.GoogleBooksHtmlService
 import com.finenkodenis.bookshelf.network.model.HtmlBookSearchService
 import com.finenkodenis.bookshelf.network.model.OpenLibraryService
-import com.finenkodenis.bookshelf.network.model.YandexBooksHtmlService
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
@@ -16,7 +16,7 @@ interface AppContainer {
 
 class DefaultAppContainer(context: Context) : AppContainer {
     private val openLibraryBaseUrl = "https://openlibrary.org/"
-    private val yandexBooksBaseUrl = "https://books.yandex.ru/"
+    private val googleBooksBaseUrl = "https://books.google.com/"
 
     private val database = BooksDatabase.getDatabase(context)
 
@@ -25,9 +25,9 @@ class DefaultAppContainer(context: Context) : AppContainer {
         .baseUrl(openLibraryBaseUrl)
         .build()
 
-    private val yandexBooksRetrofit: Retrofit = Retrofit.Builder()
+    private val googleBooksRetrofit: Retrofit = Retrofit.Builder()
         .addConverterFactory(GsonConverterFactory.create())
-        .baseUrl(yandexBooksBaseUrl)
+        .baseUrl(googleBooksBaseUrl)
         .build()
 
     private val openLibraryService: OpenLibraryService by lazy {
@@ -38,15 +38,15 @@ class DefaultAppContainer(context: Context) : AppContainer {
         openLibraryRetrofit.create(HtmlBookSearchService::class.java)
     }
 
-    private val yandexBooksHtmlService: YandexBooksHtmlService by lazy {
-        yandexBooksRetrofit.create(YandexBooksHtmlService::class.java)
+    private val googleBooksHtmlService: GoogleBooksHtmlService by lazy {
+        googleBooksRetrofit.create(GoogleBooksHtmlService::class.java)
     }
 
     override val booksRepository: BooksRepository by lazy {
         NetworkBooksRepository(
             openLibraryService = openLibraryService,
             htmlBookSearchService = htmlBookSearchService,
-            yandexBooksHtmlService = yandexBooksHtmlService
+            googleBooksHtmlService = googleBooksHtmlService
         )
     }
 

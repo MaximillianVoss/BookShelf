@@ -296,7 +296,7 @@ class BooksViewModel(
         return when (source) {
             BookSearchSource.OPEN_LIBRARY -> "Не удалось подключиться к Open Library. Проверьте интернет или выберите другой источник."
             BookSearchSource.HTML_PARSER -> "Не удалось загрузить HTML-страницу поиска. Проверьте интернет или выберите другой источник."
-            BookSearchSource.YANDEX_HTML -> "Не удалось загрузить HTML-страницу Яндекс Книг. Проверьте интернет или выберите другой источник."
+            BookSearchSource.GOOGLE_BOOKS_HTML -> "Не удалось загрузить HTML-страницу Google Books. Проверьте интернет или выберите другой источник."
             else -> "Не удалось загрузить книги. Проверьте интернет и повторите попытку."
         }
     }
@@ -307,8 +307,8 @@ class BooksViewModel(
                 "Не удалось загрузить книги из Open Library: HTTP ${error.code()}."
             source == BookSearchSource.HTML_PARSER ->
                 "Не удалось загрузить HTML-страницу поиска: HTTP ${error.code()}."
-            source == BookSearchSource.YANDEX_HTML ->
-                "Не удалось загрузить HTML-страницу Яндекс Книг: HTTP ${error.code()}."
+            source == BookSearchSource.GOOGLE_BOOKS_HTML ->
+                "Не удалось загрузить HTML-страницу Google Books: HTTP ${error.code()}."
             else ->
                 "Не удалось загрузить книги: HTTP ${error.code()}."
         }

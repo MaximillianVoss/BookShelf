@@ -4,6 +4,6 @@ enum class BookSearchSource(val title: String) {
     ALL("Все"),
     OPEN_LIBRARY("Open Library"),
     HTML_PARSER("Open Library HTML"),
-    YANDEX_HTML("Яндекс Книги"),
+    GOOGLE_BOOKS_HTML("Google Books HTML"),
     LOCAL("Локальный каталог")
 }

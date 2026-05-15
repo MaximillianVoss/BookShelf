@@ -1,15 +1,15 @@
 package com.finenkodenis.bookshelf
 
 import com.finenkodenis.bookshelf.data.BookSearchSource
+import com.finenkodenis.bookshelf.data.GOOGLE_BOOKS_HTML_SOURCE
 import com.finenkodenis.bookshelf.data.NetworkBooksRepository
 import com.finenkodenis.bookshelf.data.OPEN_LIBRARY_HTML_SOURCE
 import com.finenkodenis.bookshelf.data.OPEN_LIBRARY_SOURCE
-import com.finenkodenis.bookshelf.data.YANDEX_BOOKS_HTML_SOURCE
+import com.finenkodenis.bookshelf.network.model.GoogleBooksHtmlService
 import com.finenkodenis.bookshelf.network.model.HtmlBookSearchService
 import com.finenkodenis.bookshelf.network.model.OpenLibraryDoc
 import com.finenkodenis.bookshelf.network.model.OpenLibrarySearchResponse
 import com.finenkodenis.bookshelf.network.model.OpenLibraryService
-import com.finenkodenis.bookshelf.network.model.YandexBooksHtmlService
 import kotlinx.coroutines.test.runTest
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody
@@ -58,13 +58,13 @@ class NetworkBooksRepositoryTest {
         val repository = NetworkBooksRepository(
             openLibraryService = EmptyOpenLibraryService(),
             htmlBookSearchService = StaticHtmlBookSearchService(HTML_SEARCH_RESULT),
-            yandexBooksHtmlService = StaticYandexBooksHtmlService(YANDEX_HTML_SEARCH_RESULT)
+            googleBooksHtmlService = StaticGoogleBooksHtmlService(GOOGLE_BOOKS_HTML_SEARCH_RESULT)
         )
 
         val books = repository.getBooks("war and peace", maxResults = 2, source = BookSearchSource.ALL)
 
-        assertEquals(listOf("War and Peace", "Война и мир"), books.map { it.title })
-        assertEquals(listOf(OPEN_LIBRARY_HTML_SOURCE, YANDEX_BOOKS_HTML_SOURCE), books.map { it.source })
+        assertEquals(listOf("War and Peace", "Google War and Peace"), books.map { it.title })
+        assertEquals(listOf(OPEN_LIBRARY_HTML_SOURCE, GOOGLE_BOOKS_HTML_SOURCE), books.map { it.source })
     }
 
     @Test
@@ -81,18 +81,18 @@ class NetworkBooksRepositoryTest {
     }
 
     @Test
-    fun yandexHtmlSource_readsBooksFromSearchPageHtml() = runTest {
-        val yandexService = StaticYandexBooksHtmlService(YANDEX_HTML_SEARCH_RESULT)
+    fun googleBooksHtmlSource_readsBooksFromSearchPageHtml() = runTest {
+        val googleBooksService = StaticGoogleBooksHtmlService(GOOGLE_BOOKS_HTML_SEARCH_RESULT)
         val repository = NetworkBooksRepository(
             openLibraryService = EmptyOpenLibraryService(),
-            yandexBooksHtmlService = yandexService
+            googleBooksHtmlService = googleBooksService
         )
 
-        val books = repository.getBooks("война и мир", maxResults = 5, source = BookSearchSource.YANDEX_HTML)
+        val books = repository.getBooks("war and peace", maxResults = 5, source = BookSearchSource.GOOGLE_BOOKS_HTML)
 
-        assertEquals("%D0%B2%D0%BE%D0%B9%D0%BD%D0%B0%20%D0%B8%20%D0%BC%D0%B8%D1%80", yandexService.receivedEncodedQuery)
-        assertEquals("Война и мир", books.single().title)
-        assertEquals(YANDEX_BOOKS_HTML_SOURCE, books.single().source)
+        assertEquals("war and peace", googleBooksService.receivedQuery)
+        assertEquals("Google War and Peace", books.single().title)
+        assertEquals(GOOGLE_BOOKS_HTML_SOURCE, books.single().source)
     }
 
     private class EmptyOpenLibraryService : OpenLibraryService {
@@ -128,13 +128,17 @@ class NetworkBooksRepositoryTest {
         }
     }
 
-    private class StaticYandexBooksHtmlService(
+    private class StaticGoogleBooksHtmlService(
         private val html: String
-    ) : YandexBooksHtmlService {
-        var receivedEncodedQuery: String? = null
+    ) : GoogleBooksHtmlService {
+        var receivedQuery: String? = null
 
-        override suspend fun searchBooksHtml(encodedQuery: String): Response<ResponseBody> {
-            receivedEncodedQuery = encodedQuery
+        override suspend fun searchBooksHtml(
+            query: String,
+            command: String,
+            language: String
+        ): Response<ResponseBody> {
+            receivedQuery = query
             return Response.success(html.toResponseBody("text/html".toMediaType()))
         }
     }
@@ -154,13 +158,14 @@ class NetworkBooksRepositoryTest {
             </html>
         """
 
-        const val YANDEX_HTML_SEARCH_RESULT = """
+        const val GOOGLE_BOOKS_HTML_SEARCH_RESULT = """
             <html>
               <body>
-                <div data-test-id="SNIPPET">
-                  <div data-test-id="SNIPPET_TITLE">
-                    <a href="/books/TXGRits7">Война и мир</a>
-                  </div>
+                <div class="book-result">
+                  <h3>
+                    <a href="/books?id=google-war-peace">Google War and Peace</a>
+                  </h3>
+                  <div class="book-author">By Google Author</div>
                 </div>
               </body>
             </html>

@@ -108,7 +108,7 @@ app/src/main/java/com/finenkodenis/bookshelf/data/AppContainer.kt
 
 - `BooksDatabase`;
 - Retrofit-клиент для Open Library;
-- HTTP-клиенты для HTML-поиска Open Library и Яндекс Книг;
+- HTTP-клиенты для HTML-поиска Open Library и Google Books;
 - `NetworkBooksRepository`;
 - `LibraryRepository`;
 - `UserRepository`.
@@ -518,7 +518,7 @@ app/src/main/java/com/finenkodenis/bookshelf/data/BooksRepository.kt
 suspend fun getBooks(query: String, maxResults: Int, source: BookSearchSource): List<Book>
 ```
 
-Параметр `source` задает источник поиска: все источники, только Open Library API, HTML-парсер Open Library, HTML-парсер Яндекс Книг или локальный каталог.
+Параметр `source` задает источник поиска: все источники, только Open Library API, HTML-парсер Open Library, HTML-парсер Google Books или локальный каталог.
 
 ### `NetworkBooksRepository`
 
@@ -534,7 +534,7 @@ app/src/main/java/com/finenkodenis/bookshelf/data/BooksRepository.kt
 
 - `OpenLibraryService` для Open Library;
 - `HtmlBookSearchService` для HTML-поиска Open Library;
-- `YandexBooksHtmlService` для HTML-поиска Яндекс Книг;
+- `GoogleBooksHtmlService` для HTML-поиска Google Books;
 - fallback-каталогом, если внешние источники не вернули результат.
 
 Логика:
@@ -632,7 +632,7 @@ app/src/main/java/com/finenkodenis/bookshelf/data/Book.kt
 ```kotlin
 OPEN_LIBRARY_SOURCE
 OPEN_LIBRARY_HTML_SOURCE
-YANDEX_BOOKS_HTML_SOURCE
+GOOGLE_BOOKS_HTML_SOURCE
 MANUAL_SOURCE
 ```
 
@@ -1131,15 +1131,15 @@ app/src/main/java/com/finenkodenis/bookshelf/network/model/HtmlBookSearchService
 
 Сервис для получения HTML-страниц поиска Open Library. Ответ затем разбирает `OpenLibraryHtmlParser`.
 
-### `YandexBooksHtmlService`
+### `GoogleBooksHtmlService`
 
 Файл:
 
 ```text
-app/src/main/java/com/finenkodenis/bookshelf/network/model/YandexBooksHtmlService.kt
+app/src/main/java/com/finenkodenis/bookshelf/network/model/GoogleBooksHtmlService.kt
 ```
 
-Сервис для получения HTML-страниц поиска Яндекс Книг. Ответ затем разбирает `YandexBooksHtmlParser`.
+Сервис для получения HTML-страниц поиска Google Books через endpoint `books?jscmd=SearchWithinVolume2`. Ответ затем разбирает `GoogleBooksHtmlParser`.
 
 ### HTML-парсеры
 
@@ -1147,7 +1147,7 @@ app/src/main/java/com/finenkodenis/bookshelf/network/model/YandexBooksHtmlServic
 
 ```text
 app/src/main/java/com/finenkodenis/bookshelf/data/OpenLibraryHtmlParser.kt
-app/src/main/java/com/finenkodenis/bookshelf/data/YandexBooksHtmlParser.kt
+app/src/main/java/com/finenkodenis/bookshelf/data/GoogleBooksHtmlParser.kt
 ```
 
 Парсеры извлекают название, автора, ссылку на страницу источника и обложку из HTML-ответа. Они покрыты unit-тестами, потому что зависят от внешней разметки сайтов.
@@ -1216,7 +1216,7 @@ app/src/main/java/com/finenkodenis/bookshelf/data/BookGenre.kt
 SearchScreen
         -> BooksViewModel.getBooks()
         -> BooksRepository.getBooks()
-            -> OpenLibraryService / HtmlBookSearchService / YandexBooksHtmlService
+            -> OpenLibraryService / HtmlBookSearchService / GoogleBooksHtmlService
             -> fallbackBooksForQuery()
         -> BooksUiState.Success
     -> BooksGridScreen

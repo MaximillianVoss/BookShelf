@@ -199,4 +199,4 @@ INSERT OR IGNORE INTO book_sources (code, name, base_url) VALUES
     ('MANUAL', 'Manual input', NULL),
     ('OPEN_LIBRARY', 'Open Library API', 'https://openlibrary.org/'),
     ('OPEN_LIBRARY_HTML', 'Open Library HTML', 'https://openlibrary.org/search'),
-    ('YANDEX_BOOKS_HTML', 'Yandex Books HTML', 'https://books.yandex.ru/');
+    ('GOOGLE_BOOKS_HTML', 'Google Books HTML', 'https://books.google.com/books');

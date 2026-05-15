@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -78,10 +79,21 @@ fun BooksCard(
                     modifier = modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                 )
             }
+            if (book.categories.isNotEmpty()) {
+                Text(
+                    text = book.categories.take(2).joinToString(", "),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                )
+            }
             AsyncImage(
                 modifier = modifier
                     .fillMaxWidth()
-                    .height(210.dp),
+                    .height(196.dp),
                 model = ImageRequest.Builder(context = LocalContext.current)
                     .data(book.imageLink.toSecureImageUrl())
                     .crossfade(true)

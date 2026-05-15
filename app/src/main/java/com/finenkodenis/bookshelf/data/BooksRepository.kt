@@ -47,7 +47,7 @@ class NetworkBooksRepository(
             return fallbackBooksForQuery(normalizedQuery, safeLimit)
         }
 
-        return remoteBooks.ifEmpty {
+        return remoteBooks.withRequestedCategory(normalizedQuery).ifEmpty {
             if (source == BookSearchSource.ALL) fallbackBooksForQuery(normalizedQuery, safeLimit) else emptyList()
         }
     }
@@ -163,6 +163,38 @@ class NetworkBooksRepository(
 
     private fun String.toPlainBookQuery(): String {
         return removePrefix("subject:").trim().ifBlank { this }
+    }
+
+    private fun List<Book>.withRequestedCategory(query: String): List<Book> {
+        val requestedCategory = query.toRequestedCategory() ?: return this
+        return map { book ->
+            val mergedCategories = (listOf(requestedCategory) + book.categories)
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+                .distinctBy { it.lowercase() }
+                .take(MAX_CATEGORIES)
+            book.copy(categories = mergedCategories)
+        }
+    }
+
+    private fun String.toRequestedCategory(): String? {
+        val trimmedQuery = trim()
+        if (!trimmedQuery.startsWith("subject:", ignoreCase = true)) return null
+
+        return trimmedQuery
+            .substringAfter(":")
+            .trim()
+            .takeIf { it.isNotBlank() }
+            ?.toDisplayCategory()
+    }
+
+    private fun String.toDisplayCategory(): String {
+        return split(Regex("\\s+"))
+            .joinToString(" ") { part ->
+                part.replaceFirstChar { char ->
+                    if (char.isLowerCase()) char.titlecase() else char.toString()
+                }
+            }
     }
 
     private fun String.toInternetArchiveQuery(): String {

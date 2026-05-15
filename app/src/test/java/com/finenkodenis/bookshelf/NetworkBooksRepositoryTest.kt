@@ -48,6 +48,17 @@ class NetworkBooksRepositoryTest {
     }
 
     @Test
+    fun genreQuery_addsRequestedGenreWhenApiDoesNotReturnSubjects() = runTest {
+        val openLibraryService = CapturingOpenLibraryWithoutSubjectsService()
+        val repository = repository(openLibraryService = openLibraryService)
+
+        val books = repository.getBooks("subject:adventure", maxResults = 5, source = BookSearchSource.OPEN_LIBRARY)
+
+        assertEquals("adventure", openLibraryService.receivedQuery)
+        assertEquals(listOf("Adventure"), books.single().categories)
+    }
+
+    @Test
     fun gutendexSource_mapsProjectGutenbergFieldsToBook() = runTest {
         val repository = repository(gutendexService = StaticGutendexService())
 
@@ -155,6 +166,24 @@ class NetworkBooksRepositoryTest {
                         languages = listOf("eng"),
                         coverId = 12345,
                         firstSentence = listOf("In a hole in the ground there lived a hobbit.")
+                    )
+                )
+            )
+        }
+    }
+
+    private class CapturingOpenLibraryWithoutSubjectsService : OpenLibraryService {
+        var receivedQuery: String? = null
+
+        override suspend fun searchBooks(query: String, limit: Int): OpenLibrarySearchResponse {
+            receivedQuery = query
+            return OpenLibrarySearchResponse(
+                docs = listOf(
+                    OpenLibraryDoc(
+                        key = "/works/OLTEST",
+                        title = "Adventure Book",
+                        authors = listOf("Demo Author"),
+                        subjects = emptyList()
                     )
                 )
             )

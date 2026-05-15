@@ -1,16 +1,10 @@
 package com.finenkodenis.bookshelf
 
-import com.example.bookshelf.BookShelf
-import com.example.bookshelf.ImageLinks
-import com.example.bookshelf.Items
-import com.example.bookshelf.VolumeInfo
 import com.finenkodenis.bookshelf.data.BookSearchSource
-import com.finenkodenis.bookshelf.data.GOOGLE_BOOKS_SOURCE
 import com.finenkodenis.bookshelf.data.NetworkBooksRepository
 import com.finenkodenis.bookshelf.data.OPEN_LIBRARY_HTML_SOURCE
 import com.finenkodenis.bookshelf.data.OPEN_LIBRARY_SOURCE
 import com.finenkodenis.bookshelf.data.YANDEX_BOOKS_HTML_SOURCE
-import com.finenkodenis.bookshelf.network.model.BookService
 import com.finenkodenis.bookshelf.network.model.HtmlBookSearchService
 import com.finenkodenis.bookshelf.network.model.OpenLibraryDoc
 import com.finenkodenis.bookshelf.network.model.OpenLibrarySearchResponse
@@ -27,56 +21,9 @@ import retrofit2.Response
 class NetworkBooksRepositoryTest {
 
     @Test
-    fun googleSource_passesConfiguredApiKey() = runTest {
-        val googleService = CapturingGoogleBooksService(
-            response = BookShelf(
-                items = arrayListOf(
-                    Items(
-                        id = "google-1",
-                        volumeInfo = VolumeInfo(
-                            title = "Dune",
-                            authors = arrayListOf("Frank Herbert"),
-                            description = "Desert planet epic",
-                            categories = arrayListOf("Science Fiction"),
-                            publishedDate = "1965",
-                            pageCount = 412,
-                            language = "en",
-                            previewLink = "https://books.google.com/books?id=google-1",
-                            imageLinks = ImageLinks(thumbnail = "https://books.google.com/cover.jpg")
-                        )
-                    )
-                )
-            )
-        )
-        val repository = NetworkBooksRepository(
-            bookService = googleService,
-            openLibraryService = EmptyOpenLibraryService(),
-            googleBooksApiKey = "test-google-key"
-        )
-
-        val books = repository.getBooks("dune", maxResults = 5, source = BookSearchSource.GOOGLE)
-
-        assertEquals("test-google-key", googleService.receivedApiKey)
-        val book = books.single()
-        assertEquals("google-1", book.externalId)
-        assertEquals("Dune", book.title)
-        assertEquals(listOf("Frank Herbert"), book.authors)
-        assertEquals("Desert planet epic", book.description)
-        assertEquals(listOf("Science Fiction"), book.categories)
-        assertEquals("1965", book.publishedDate)
-        assertEquals(412, book.pageCount)
-        assertEquals("en", book.language)
-        assertEquals("https://books.google.com/books?id=google-1", book.previewLink)
-        assertEquals("https://books.google.com/cover.jpg", book.imageLink)
-        assertEquals(GOOGLE_BOOKS_SOURCE, book.source)
-    }
-
-    @Test
     fun openLibrarySource_mapsApiFieldsToBook() = runTest {
         val repository = NetworkBooksRepository(
-            bookService = FailingGoogleBooksService(),
-            openLibraryService = StaticOpenLibraryService(),
-            googleBooksApiKey = ""
+            openLibraryService = StaticOpenLibraryService()
         )
 
         val books = repository.getBooks("hobbit", maxResults = 5, source = BookSearchSource.OPEN_LIBRARY)
@@ -95,11 +42,9 @@ class NetworkBooksRepositoryTest {
     }
 
     @Test
-    fun allSource_keepsOpenLibraryResultsWhenGoogleFails() = runTest {
+    fun allSource_usesOpenLibraryApiAndKeepsResults() = runTest {
         val repository = NetworkBooksRepository(
-            bookService = FailingGoogleBooksService(),
-            openLibraryService = StaticOpenLibraryService(),
-            googleBooksApiKey = ""
+            openLibraryService = StaticOpenLibraryService()
         )
 
         val books = repository.getBooks("hobbit", maxResults = 5, source = BookSearchSource.ALL)
@@ -109,12 +54,24 @@ class NetworkBooksRepositoryTest {
     }
 
     @Test
-    fun htmlParserSource_readsBooksFromSearchPageHtml() = runTest {
+    fun allSource_usesHtmlParsersWhenOpenLibraryApiReturnsEmpty() = runTest {
         val repository = NetworkBooksRepository(
-            bookService = FailingGoogleBooksService(),
             openLibraryService = EmptyOpenLibraryService(),
             htmlBookSearchService = StaticHtmlBookSearchService(HTML_SEARCH_RESULT),
-            googleBooksApiKey = ""
+            yandexBooksHtmlService = StaticYandexBooksHtmlService(YANDEX_HTML_SEARCH_RESULT)
+        )
+
+        val books = repository.getBooks("war and peace", maxResults = 2, source = BookSearchSource.ALL)
+
+        assertEquals(listOf("War and Peace", "Война и мир"), books.map { it.title })
+        assertEquals(listOf(OPEN_LIBRARY_HTML_SOURCE, YANDEX_BOOKS_HTML_SOURCE), books.map { it.source })
+    }
+
+    @Test
+    fun htmlParserSource_readsBooksFromSearchPageHtml() = runTest {
+        val repository = NetworkBooksRepository(
+            openLibraryService = EmptyOpenLibraryService(),
+            htmlBookSearchService = StaticHtmlBookSearchService(HTML_SEARCH_RESULT)
         )
 
         val books = repository.getBooks("war and peace", maxResults = 5, source = BookSearchSource.HTML_PARSER)
@@ -127,10 +84,8 @@ class NetworkBooksRepositoryTest {
     fun yandexHtmlSource_readsBooksFromSearchPageHtml() = runTest {
         val yandexService = StaticYandexBooksHtmlService(YANDEX_HTML_SEARCH_RESULT)
         val repository = NetworkBooksRepository(
-            bookService = FailingGoogleBooksService(),
             openLibraryService = EmptyOpenLibraryService(),
-            yandexBooksHtmlService = yandexService,
-            googleBooksApiKey = ""
+            yandexBooksHtmlService = yandexService
         )
 
         val books = repository.getBooks("война и мир", maxResults = 5, source = BookSearchSource.YANDEX_HTML)
@@ -138,31 +93,6 @@ class NetworkBooksRepositoryTest {
         assertEquals("%D0%B2%D0%BE%D0%B9%D0%BD%D0%B0%20%D0%B8%20%D0%BC%D0%B8%D1%80", yandexService.receivedEncodedQuery)
         assertEquals("Война и мир", books.single().title)
         assertEquals(YANDEX_BOOKS_HTML_SOURCE, books.single().source)
-    }
-
-    private class CapturingGoogleBooksService(
-        private val response: BookShelf
-    ) : BookService {
-        var receivedApiKey: String? = null
-
-        override suspend fun bookSearch(
-            searchQuery: String,
-            maxResults: Int,
-            apiKey: String?
-        ): BookShelf {
-            receivedApiKey = apiKey
-            return response
-        }
-    }
-
-    private class FailingGoogleBooksService : BookService {
-        override suspend fun bookSearch(
-            searchQuery: String,
-            maxResults: Int,
-            apiKey: String?
-        ): BookShelf {
-            error("Google Books quota exceeded")
-        }
     }
 
     private class EmptyOpenLibraryService : OpenLibraryService {

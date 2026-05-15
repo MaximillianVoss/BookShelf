@@ -1,9 +1,7 @@
 package com.finenkodenis.bookshelf.data
 
 import android.content.Context
-import com.finenkodenis.bookshelf.BuildConfig
 import com.finenkodenis.bookshelf.data.local.BooksDatabase
-import com.finenkodenis.bookshelf.network.model.BookService
 import com.finenkodenis.bookshelf.network.model.HtmlBookSearchService
 import com.finenkodenis.bookshelf.network.model.OpenLibraryService
 import com.finenkodenis.bookshelf.network.model.YandexBooksHtmlService
@@ -17,16 +15,10 @@ interface AppContainer {
 }
 
 class DefaultAppContainer(context: Context) : AppContainer {
-    private val googleBooksBaseUrl = "https://www.googleapis.com/books/v1/"
     private val openLibraryBaseUrl = "https://openlibrary.org/"
     private val yandexBooksBaseUrl = "https://books.yandex.ru/"
 
     private val database = BooksDatabase.getDatabase(context)
-
-    private val googleBooksRetrofit: Retrofit = Retrofit.Builder()
-        .addConverterFactory(GsonConverterFactory.create())
-        .baseUrl(googleBooksBaseUrl)
-        .build()
 
     private val openLibraryRetrofit: Retrofit = Retrofit.Builder()
         .addConverterFactory(GsonConverterFactory.create())
@@ -37,10 +29,6 @@ class DefaultAppContainer(context: Context) : AppContainer {
         .addConverterFactory(GsonConverterFactory.create())
         .baseUrl(yandexBooksBaseUrl)
         .build()
-
-    private val googleBooksService: BookService by lazy {
-        googleBooksRetrofit.create(BookService::class.java)
-    }
 
     private val openLibraryService: OpenLibraryService by lazy {
         openLibraryRetrofit.create(OpenLibraryService::class.java)
@@ -56,11 +44,9 @@ class DefaultAppContainer(context: Context) : AppContainer {
 
     override val booksRepository: BooksRepository by lazy {
         NetworkBooksRepository(
-            bookService = googleBooksService,
             openLibraryService = openLibraryService,
             htmlBookSearchService = htmlBookSearchService,
-            yandexBooksHtmlService = yandexBooksHtmlService,
-            googleBooksApiKey = BuildConfig.GOOGLE_BOOKS_API_KEY
+            yandexBooksHtmlService = yandexBooksHtmlService
         )
     }
 

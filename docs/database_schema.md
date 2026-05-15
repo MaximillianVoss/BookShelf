@@ -80,7 +80,7 @@
 
 `users` stores registered local users. Passwords must not be stored as plain text; keep only hash and salt.
 
-`books` stores book data from Google Books, Open Library, or manual input. `source_id + external_id` prevents duplicate external books.
+`books` stores book data from Open Library, HTML-parsed book pages, or manual input. `source_id + external_id` prevents duplicate external books.
 
 `authors`, `book_authors`, `genres`, and `book_genres` normalize many-to-many fields from API responses.
 
@@ -104,7 +104,7 @@
 1. Select the user's read books from user_books where status = 'READ'.
 2. Join them with book_genres and genres.
 3. Find the most frequent genres in v_user_genre_stats.
-4. Search external APIs by top genres, for example Google Books subject queries.
+4. Search external sources by top genres, for example Open Library queries or HTML search pages.
 5. Exclude books already present in the user's library.
 6. Save candidates to book_recommendations with reason and score.
 ```

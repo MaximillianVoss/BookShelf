@@ -62,66 +62,6 @@ enum class AppSection(val title: String) {
     READER("Чтение")
 }
 
-internal fun shouldFallbackToOpenLibraryAfterGoogleError(
-    source: BookSearchSource,
-    httpCode: Int? = null
-): Boolean {
-    return source == BookSearchSource.GOOGLE && (httpCode == null || httpCode == 429 || httpCode == 503)
-}
-
-internal suspend fun loadGoogleBooksFallbackState(
-    booksRepository: BooksRepository,
-    query: String,
-    maxResults: Int,
-    reason: String
-): BooksUiState {
-    val openLibraryApiBooks = runCatching {
-        booksRepository.getBooks(query, maxResults, BookSearchSource.OPEN_LIBRARY)
-    }.getOrDefault(emptyList())
-
-    if (openLibraryApiBooks.isNotEmpty()) {
-        return BooksUiState.Success(
-            openLibraryApiBooks,
-            "$reason Результаты: Open Library API (резервный источник)."
-        )
-    }
-
-    val htmlBooks = runCatching {
-        booksRepository.getBooks(query, maxResults, BookSearchSource.HTML_PARSER)
-    }.getOrDefault(emptyList())
-
-    if (htmlBooks.isNotEmpty()) {
-        return BooksUiState.Success(
-            htmlBooks,
-            "$reason Результаты: HTML-парсер сайта Open Library (резервный источник)."
-        )
-    }
-
-    val yandexBooks = runCatching {
-        booksRepository.getBooks(query, maxResults, BookSearchSource.YANDEX_HTML)
-    }.getOrDefault(emptyList())
-
-    if (yandexBooks.isNotEmpty()) {
-        return BooksUiState.Success(
-            yandexBooks,
-            "$reason Результаты: HTML-парсер сайта Яндекс Книги (резервный источник)."
-        )
-    }
-
-    val localBooks = runCatching {
-        booksRepository.getBooks(query, maxResults, BookSearchSource.LOCAL)
-    }.getOrDefault(emptyList())
-
-    return if (localBooks.isNotEmpty()) {
-        BooksUiState.Success(
-            localBooks,
-            "$reason Open Library API и HTML-парсеры ничего не вернули. Результаты: локальный каталог."
-        )
-    } else {
-        BooksUiState.Error("Google Books недоступен, резервные источники тоже не ответили. Выберите локальный каталог.")
-    }
-}
-
 @OptIn(ExperimentalCoroutinesApi::class)
 class BooksViewModel(
     private val booksRepository: BooksRepository,
@@ -345,40 +285,15 @@ class BooksViewModel(
                 try {
                     BooksUiState.Success(booksRepository.getBooks(query, maxResults, source))
                 } catch (e: IOException) {
-                    if (shouldFallbackToOpenLibraryAfterGoogleError(source)) {
-                        loadGoogleBooksFallback(
-                            query,
-                            maxResults,
-                            "Выбран источник: Google Books. Google Books недоступен по сети."
-                        )
-                    } else {
-                        BooksUiState.Error(networkErrorMessage(source))
-                    }
+                    BooksUiState.Error(networkErrorMessage(source))
                 } catch (e: HttpException) {
-                    if (shouldFallbackToOpenLibraryAfterGoogleError(source, e.code())) {
-                        loadGoogleBooksFallback(
-                            query,
-                            maxResults,
-                            "Выбран источник: Google Books. Google Books вернул HTTP ${e.code()}."
-                        )
-                    } else {
-                        BooksUiState.Error(httpErrorMessage(e, source))
-                    }
+                    BooksUiState.Error(httpErrorMessage(e, source))
                 }
         }
     }
 
-    private suspend fun loadGoogleBooksFallback(
-        query: String,
-        maxResults: Int,
-        reason: String
-    ): BooksUiState {
-        return loadGoogleBooksFallbackState(booksRepository, query, maxResults, reason)
-    }
-
     private fun networkErrorMessage(source: BookSearchSource): String {
         return when (source) {
-            BookSearchSource.GOOGLE -> "Не удалось подключиться к Google Books. Проверьте интернет или выберите другой источник."
             BookSearchSource.OPEN_LIBRARY -> "Не удалось подключиться к Open Library. Проверьте интернет или выберите другой источник."
             BookSearchSource.HTML_PARSER -> "Не удалось загрузить HTML-страницу поиска. Проверьте интернет или выберите другой источник."
             BookSearchSource.YANDEX_HTML -> "Не удалось загрузить HTML-страницу Яндекс Книг. Проверьте интернет или выберите другой источник."
@@ -388,14 +303,6 @@ class BooksViewModel(
 
     private fun httpErrorMessage(error: HttpException, source: BookSearchSource): String {
         return when {
-            source == BookSearchSource.GOOGLE && error.code() == 429 ->
-                "Google Books временно ограничил запросы (429). Добавьте GOOGLE_BOOKS_API_KEY в local.properties или выберите другой источник."
-            source == BookSearchSource.GOOGLE && error.code() == 503 ->
-                "Google Books временно недоступен (503). Выберите Open Library или локальный каталог."
-            source == BookSearchSource.GOOGLE && error.code() == 403 ->
-                "Google Books отклонил запрос. Проверьте GOOGLE_BOOKS_API_KEY или выберите другой источник."
-            source == BookSearchSource.GOOGLE ->
-                "Не удалось загрузить книги из Google Books: HTTP ${error.code()}."
             source == BookSearchSource.OPEN_LIBRARY ->
                 "Не удалось загрузить книги из Open Library: HTTP ${error.code()}."
             source == BookSearchSource.HTML_PARSER ->

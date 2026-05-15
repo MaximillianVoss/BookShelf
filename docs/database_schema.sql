@@ -197,5 +197,6 @@ GROUP BY ub.user_id, g.genre_id, g.name;
 
 INSERT OR IGNORE INTO book_sources (code, name, base_url) VALUES
     ('MANUAL', 'Manual input', NULL),
-    ('GOOGLE_BOOKS', 'Google Books API', 'https://www.googleapis.com/books/v1/'),
-    ('OPEN_LIBRARY', 'Open Library API', 'https://openlibrary.org/');
+    ('OPEN_LIBRARY', 'Open Library API', 'https://openlibrary.org/'),
+    ('OPEN_LIBRARY_HTML', 'Open Library HTML', 'https://openlibrary.org/search'),
+    ('YANDEX_BOOKS_HTML', 'Yandex Books HTML', 'https://books.yandex.ru/');

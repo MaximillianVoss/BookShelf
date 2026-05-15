@@ -107,8 +107,8 @@ app/src/main/java/com/finenkodenis/bookshelf/data/AppContainer.kt
 Создает:
 
 - `BooksDatabase`;
-- Retrofit-клиент для Google Books;
 - Retrofit-клиент для Open Library;
+- HTTP-клиенты для HTML-поиска Open Library и Яндекс Книг;
 - `NetworkBooksRepository`;
 - `LibraryRepository`;
 - `UserRepository`.
@@ -518,7 +518,7 @@ app/src/main/java/com/finenkodenis/bookshelf/data/BooksRepository.kt
 suspend fun getBooks(query: String, maxResults: Int, source: BookSearchSource): List<Book>
 ```
 
-Параметр `source` задает источник поиска: все источники, только Google Books, только Open Library или локальный каталог.
+Параметр `source` задает источник поиска: все источники, только Open Library API, HTML-парсер Open Library, HTML-парсер Яндекс Книг или локальный каталог.
 
 ### `NetworkBooksRepository`
 
@@ -532,18 +532,18 @@ app/src/main/java/com/finenkodenis/bookshelf/data/BooksRepository.kt
 
 Работает с:
 
-- `BookService` для Google Books;
 - `OpenLibraryService` для Open Library;
-- fallback-каталогом, если API не вернули результат.
-- необязательным `googleBooksApiKey`, который передается в Google Books как параметр `key`.
+- `HtmlBookSearchService` для HTML-поиска Open Library;
+- `YandexBooksHtmlService` для HTML-поиска Яндекс Книг;
+- fallback-каталогом, если внешние источники не вернули результат.
 
 Логика:
 
 1. Нормализует поисковый запрос.
 2. Выбирает источник по `BookSearchSource`.
-3. Для режима `ALL` делит лимит результатов между Google Books и Open Library.
-4. Выполняет сетевые запросы через Retrofit.
-5. Преобразует API-модели в доменную модель `Book`.
+3. Для режима `ALL` сначала запрашивает Open Library API, затем добирает результат HTML-парсерами.
+4. Выполняет сетевые запросы через Retrofit и HTML-сервисы.
+5. Преобразует API/HTML-модели в доменную модель `Book`.
 6. Удаляет дубликаты.
 7. Если общий список пустой, использует `fallbackBooksForQuery`.
 8. Для конкретного выбранного источника не подменяет результат fallback-каталогом, чтобы пользователь видел реальное состояние выбранного API.
@@ -630,8 +630,9 @@ app/src/main/java/com/finenkodenis/bookshelf/data/Book.kt
 Константы:
 
 ```kotlin
-GOOGLE_BOOKS_SOURCE
 OPEN_LIBRARY_SOURCE
+OPEN_LIBRARY_HTML_SOURCE
+YANDEX_BOOKS_HTML_SOURCE
 MANUAL_SOURCE
 ```
 
@@ -862,7 +863,7 @@ app/src/main/java/com/finenkodenis/bookshelf/data/FallbackBooks.kt
 
 Функция локального резервного каталога.
 
-Используется, если Google Books и Open Library не вернули книг или временно недоступны.
+Используется, если внешние источники не вернули книг или временно недоступны.
 
 ## Room / SQLite слой
 
@@ -1102,34 +1103,6 @@ Room TypeConverters.
 
 ## Сетевой слой
 
-### `BookService`
-
-Файл:
-
-```text
-app/src/main/java/com/finenkodenis/bookshelf/network/model/BookService.kt
-```
-
-Retrofit-интерфейс Google Books API.
-
-Основной запрос:
-
-```kotlin
-GET volumes
-```
-
-Параметры запроса:
-
-```text
-q          - строка поиска
-maxResults - лимит результатов
-key        - необязательный Google Books API key
-```
-
-Ключ берется из `BuildConfig.GOOGLE_BOOKS_API_KEY`, который формируется из локального `local.properties`.
-
-Используется в `NetworkBooksRepository`.
-
 ### `OpenLibraryService`
 
 Файл:
@@ -1148,30 +1121,36 @@ GET search.json
 
 Возвращает `OpenLibrarySearchResponse` со списком `OpenLibraryDoc`.
 
-### Модели Google Books
+### `HtmlBookSearchService`
 
-Папка:
+Файл:
 
 ```text
-app/src/main/java/com/finenkodenis/bookshelf/network/model
+app/src/main/java/com/finenkodenis/bookshelf/network/model/HtmlBookSearchService.kt
 ```
 
-Основные модели:
+Сервис для получения HTML-страниц поиска Open Library. Ответ затем разбирает `OpenLibraryHtmlParser`.
 
-- `BookShelf`;
-- `Items`;
-- `VolumeInfo`;
-- `ImageLinks`;
-- `IndustryIdentifiers`;
-- `AccessInfo`;
-- `ReadingModes`;
-- `SaleInfo`;
-- `SearchInfo`;
-- `Pdf`;
-- `Epub`;
-- `PanelizationSummary`.
+### `YandexBooksHtmlService`
 
-Эти классы отражают структуру JSON-ответа Google Books API.
+Файл:
+
+```text
+app/src/main/java/com/finenkodenis/bookshelf/network/model/YandexBooksHtmlService.kt
+```
+
+Сервис для получения HTML-страниц поиска Яндекс Книг. Ответ затем разбирает `YandexBooksHtmlParser`.
+
+### HTML-парсеры
+
+Файлы:
+
+```text
+app/src/main/java/com/finenkodenis/bookshelf/data/OpenLibraryHtmlParser.kt
+app/src/main/java/com/finenkodenis/bookshelf/data/YandexBooksHtmlParser.kt
+```
+
+Парсеры извлекают название, автора, ссылку на страницу источника и обложку из HTML-ответа. Они покрыты unit-тестами, потому что зависят от внешней разметки сайтов.
 
 ### Модели Open Library
 
@@ -1235,9 +1214,9 @@ app/src/main/java/com/finenkodenis/bookshelf/data/BookGenre.kt
 
 ```text
 SearchScreen
-    -> BooksViewModel.getBooks()
+        -> BooksViewModel.getBooks()
         -> BooksRepository.getBooks()
-            -> BookService / OpenLibraryService
+            -> OpenLibraryService / HtmlBookSearchService / YandexBooksHtmlService
             -> fallbackBooksForQuery()
         -> BooksUiState.Success
     -> BooksGridScreen
@@ -1316,7 +1295,7 @@ app/src/test/java/com/finenkodenis/bookshelf
 | `BooksViewModel` | Состояние приложения и координация сценариев |
 | `UserRepository` | Регистрация, вход, демо-вход |
 | `BooksRepository` | Интерфейс поиска книг |
-| `NetworkBooksRepository` | Поиск в Google Books, Open Library и fallback |
+| `NetworkBooksRepository` | Поиск в Open Library API, HTML-источниках и fallback |
 | `LibraryRepository` | Личная библиотека, статистика, сессии чтения |
 | `RecommendationEngine` | Подбор жанров и фильтрация рекомендаций |
 | `BooksDatabase` | Room Database |

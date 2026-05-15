@@ -3,7 +3,7 @@ package com.finenkodenis.bookshelf.data
 data class Book(
     val localId: Long? = null,
     val externalId: String? = null,
-    val source: String = GOOGLE_BOOKS_SOURCE,
+    val source: String = MANUAL_SOURCE,
     val title: String,
     val authors: List<String> = emptyList(),
     val description: String? = null,
@@ -15,7 +15,6 @@ data class Book(
     val imageLink: String? = null
 )
 
-const val GOOGLE_BOOKS_SOURCE = "GOOGLE_BOOKS"
 const val OPEN_LIBRARY_SOURCE = "OPEN_LIBRARY"
 const val OPEN_LIBRARY_HTML_SOURCE = "OPEN_LIBRARY_HTML"
 const val YANDEX_BOOKS_HTML_SOURCE = "YANDEX_BOOKS_HTML"

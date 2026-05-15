@@ -197,5 +197,7 @@ GROUP BY ub.user_id, g.genre_id, g.name;
 
 INSERT OR IGNORE INTO book_sources (code, name, base_url) VALUES
     ('MANUAL', 'Manual input', NULL),
-    ('GOOGLE_BOOKS', 'Google Books API', 'https://www.googleapis.com/books/v1/'),
-    ('OPEN_LIBRARY', 'Open Library API', 'https://openlibrary.org/');
+    ('OPEN_LIBRARY', 'Open Library API', 'https://openlibrary.org/'),
+    ('GUTENDEX', 'Gutendex API', 'https://gutendex.com/books/'),
+    ('INTERNET_ARCHIVE', 'Internet Archive Advanced Search API', 'https://archive.org/advancedsearch.php'),
+    ('LIBRARY_OF_CONGRESS', 'Library of Congress JSON API', 'https://www.loc.gov/books/');

@@ -107,8 +107,10 @@ app/src/main/java/com/finenkodenis/bookshelf/data/AppContainer.kt
 Создает:
 
 - `BooksDatabase`;
-- Retrofit-клиент для Google Books;
 - Retrofit-клиент для Open Library;
+- Retrofit-клиент для Gutendex;
+- Retrofit-клиент для Internet Archive;
+- Retrofit-клиент для Library of Congress;
 - `NetworkBooksRepository`;
 - `LibraryRepository`;
 - `UserRepository`.
@@ -518,7 +520,7 @@ app/src/main/java/com/finenkodenis/bookshelf/data/BooksRepository.kt
 suspend fun getBooks(query: String, maxResults: Int, source: BookSearchSource): List<Book>
 ```
 
-Параметр `source` задает источник поиска: все источники, только Google Books, только Open Library или локальный каталог.
+Параметр `source` задает источник поиска: все источники, только Open Library, Gutendex, Internet Archive, Library of Congress или локальный каталог.
 
 ### `NetworkBooksRepository`
 
@@ -532,16 +534,17 @@ app/src/main/java/com/finenkodenis/bookshelf/data/BooksRepository.kt
 
 Работает с:
 
-- `BookService` для Google Books;
 - `OpenLibraryService` для Open Library;
+- `GutendexService` для Project Gutenberg metadata;
+- `InternetArchiveService` для Internet Archive Advanced Search;
+- `LibraryOfCongressService` для loc.gov JSON API;
 - fallback-каталогом, если API не вернули результат.
-- необязательным `googleBooksApiKey`, который передается в Google Books как параметр `key`.
 
 Логика:
 
 1. Нормализует поисковый запрос.
 2. Выбирает источник по `BookSearchSource`.
-3. Для режима `ALL` делит лимит результатов между Google Books и Open Library.
+3. Для режима `ALL` запрашивает все внешние API независимо друг от друга.
 4. Выполняет сетевые запросы через Retrofit.
 5. Преобразует API-модели в доменную модель `Book`.
 6. Удаляет дубликаты.
@@ -630,8 +633,10 @@ app/src/main/java/com/finenkodenis/bookshelf/data/Book.kt
 Константы:
 
 ```kotlin
-GOOGLE_BOOKS_SOURCE
 OPEN_LIBRARY_SOURCE
+GUTENDEX_SOURCE
+INTERNET_ARCHIVE_SOURCE
+LIBRARY_OF_CONGRESS_SOURCE
 MANUAL_SOURCE
 ```
 
@@ -862,7 +867,7 @@ app/src/main/java/com/finenkodenis/bookshelf/data/FallbackBooks.kt
 
 Функция локального резервного каталога.
 
-Используется, если Google Books и Open Library не вернули книг или временно недоступны.
+Используется, если внешние API не вернули книг или временно недоступны.
 
 ## Room / SQLite слой
 
@@ -1102,34 +1107,6 @@ Room TypeConverters.
 
 ## Сетевой слой
 
-### `BookService`
-
-Файл:
-
-```text
-app/src/main/java/com/finenkodenis/bookshelf/network/model/BookService.kt
-```
-
-Retrofit-интерфейс Google Books API.
-
-Основной запрос:
-
-```kotlin
-GET volumes
-```
-
-Параметры запроса:
-
-```text
-q          - строка поиска
-maxResults - лимит результатов
-key        - необязательный Google Books API key
-```
-
-Ключ берется из `BuildConfig.GOOGLE_BOOKS_API_KEY`, который формируется из локального `local.properties`.
-
-Используется в `NetworkBooksRepository`.
-
 ### `OpenLibraryService`
 
 Файл:
@@ -1148,30 +1125,59 @@ GET search.json
 
 Возвращает `OpenLibrarySearchResponse` со списком `OpenLibraryDoc`.
 
-### Модели Google Books
+### `GutendexService`
 
-Папка:
+Файл:
 
 ```text
-app/src/main/java/com/finenkodenis/bookshelf/network/model
+app/src/main/java/com/finenkodenis/bookshelf/network/model/GutendexService.kt
 ```
 
-Основные модели:
+Retrofit-интерфейс Gutendex API для Project Gutenberg.
 
-- `BookShelf`;
-- `Items`;
-- `VolumeInfo`;
-- `ImageLinks`;
-- `IndustryIdentifiers`;
-- `AccessInfo`;
-- `ReadingModes`;
-- `SaleInfo`;
-- `SearchInfo`;
-- `Pdf`;
-- `Epub`;
-- `PanelizationSummary`.
+Основной запрос:
 
-Эти классы отражают структуру JSON-ответа Google Books API.
+```kotlin
+GET books/
+```
+
+Возвращает книги public domain с авторами, subjects, summaries, языком, обложкой и ссылками на HTML/TXT/EPUB-форматы.
+
+### `InternetArchiveService`
+
+Файл:
+
+```text
+app/src/main/java/com/finenkodenis/bookshelf/network/model/InternetArchiveService.kt
+```
+
+Retrofit-интерфейс Internet Archive Advanced Search API.
+
+Основной запрос:
+
+```kotlin
+GET advancedsearch.php
+```
+
+Используется для поиска в `mediatype:texts`; возвращает identifier, title, creator, description, subject, date и language.
+
+### `LibraryOfCongressService`
+
+Файл:
+
+```text
+app/src/main/java/com/finenkodenis/bookshelf/network/model/LibraryOfCongressService.kt
+```
+
+Retrofit-интерфейс loc.gov JSON API.
+
+Основной запрос:
+
+```kotlin
+GET books/
+```
+
+Используется с параметром `fo=json`; возвращает библиографические записи и ссылки на страницы Library of Congress.
 
 ### Модели Open Library
 
@@ -1237,7 +1243,7 @@ app/src/main/java/com/finenkodenis/bookshelf/data/BookGenre.kt
 SearchScreen
     -> BooksViewModel.getBooks()
         -> BooksRepository.getBooks()
-            -> BookService / OpenLibraryService
+            -> OpenLibraryService / GutendexService / InternetArchiveService / LibraryOfCongressService
             -> fallbackBooksForQuery()
         -> BooksUiState.Success
     -> BooksGridScreen
@@ -1316,7 +1322,7 @@ app/src/test/java/com/finenkodenis/bookshelf
 | `BooksViewModel` | Состояние приложения и координация сценариев |
 | `UserRepository` | Регистрация, вход, демо-вход |
 | `BooksRepository` | Интерфейс поиска книг |
-| `NetworkBooksRepository` | Поиск в Google Books, Open Library и fallback |
+| `NetworkBooksRepository` | Поиск во внешних API без ключей и fallback |
 | `LibraryRepository` | Личная библиотека, статистика, сессии чтения |
 | `RecommendationEngine` | Подбор жанров и фильтрация рекомендаций |
 | `BooksDatabase` | Room Database |

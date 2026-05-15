@@ -1,6 +1,7 @@
 package com.finenkodenis.bookshelf.ui.theme.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,8 +20,11 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.finenkodenis.bookshelf.data.LibraryBook
 import com.finenkodenis.bookshelf.data.LibraryStats
@@ -133,7 +137,8 @@ private fun StatusChart(statusCounts: Map<ReadingStatus, Int>) {
 @Composable
 private fun ReadingCalendar(stats: LibraryStats) {
     val activeDays = stats.readingDays.associateBy { it.date }
-    val days = lastDays(30)
+    val days = lastCalendarDates(30)
+    val weekdayLabels = days.take(7).map { it.weekdayShort }
 
     Card(elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
         Column(
@@ -142,31 +147,93 @@ private fun ReadingCalendar(stats: LibraryStats) {
                 .padding(12.dp)
         ) {
             Text("Календарь чтения за 30 дней", style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = "Период: ${days.first().displayDate} - ${days.last().displayDate}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             Spacer(modifier = Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                weekdayLabels.forEach { label ->
+                    Box(
+                        modifier = Modifier.size(38.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(4.dp))
             days.chunked(7).forEach { week ->
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     week.forEach { date ->
-                        val day = activeDays[date]
-                        val color = if (day != null && (day.totalMinutes > 0 || day.totalPages > 0)) {
+                        val day = activeDays[date.isoDate]
+                        val hasReading = day != null && (day.totalMinutes > 0 || day.totalPages > 0)
+                        val color = if (hasReading) {
                             MaterialTheme.colorScheme.primary
                         } else {
-                            Color.LightGray
+                            MaterialTheme.colorScheme.surfaceVariant
                         }
-                        Box(
-                            modifier = Modifier
-                                .size(28.dp)
-                                .background(color, RoundedCornerShape(4.dp))
+                        val textColor = if (hasReading) {
+                            MaterialTheme.colorScheme.onPrimary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                        CalendarDayCell(
+                            dayNumber = date.dayOfMonth,
+                            isToday = date.isToday,
+                            color = color,
+                            textColor = textColor,
+                            hasReading = hasReading
                         )
                     }
                 }
                 Spacer(modifier = Modifier.height(6.dp))
             }
             Text(
-                text = "Цветной квадрат означает день с чтением.",
+                text = "Темный день - было чтение, светлый - без чтения. Сегодня выделен рамкой.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@Composable
+private fun CalendarDayCell(
+    dayNumber: Int,
+    isToday: Boolean,
+    color: Color,
+    textColor: Color,
+    hasReading: Boolean
+) {
+    val shape = RoundedCornerShape(6.dp)
+    val cellModifier = Modifier
+        .size(38.dp)
+        .background(color, shape)
+        .then(
+            if (isToday) {
+                Modifier.border(2.dp, MaterialTheme.colorScheme.tertiary, shape)
+            } else {
+                Modifier
+            }
+        )
+
+    Box(
+        modifier = cellModifier,
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = dayNumber.toString(),
+            color = textColor,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = if (hasReading) FontWeight.Bold else FontWeight.Normal
+        )
     }
 }
 
@@ -210,12 +277,33 @@ private fun GenreChart(stats: LibraryStats) {
     }
 }
 
-private fun lastDays(count: Int): List<String> {
+internal data class CalendarDate(
+    val isoDate: String,
+    val dayOfMonth: Int,
+    val displayDate: String,
+    val weekdayShort: String,
+    val isToday: Boolean
+)
+
+internal fun lastCalendarDates(
+    count: Int,
+    today: Calendar = Calendar.getInstance()
+): List<CalendarDate> {
     val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-    val calendar = Calendar.getInstance()
+    val displayFormatter = SimpleDateFormat("d MMM", Locale("ru", "RU"))
+    val weekdayFormatter = SimpleDateFormat("EE", Locale("ru", "RU"))
+    val todayIso = formatter.format(today.time)
+    val calendar = today.clone() as Calendar
     calendar.add(Calendar.DAY_OF_YEAR, -(count - 1))
     return (0 until count).map {
-        formatter.format(calendar.time).also {
+        val isoDate = formatter.format(calendar.time)
+        CalendarDate(
+            isoDate = isoDate,
+            dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH),
+            displayDate = displayFormatter.format(calendar.time),
+            weekdayShort = weekdayFormatter.format(calendar.time).take(2).uppercase(Locale("ru", "RU")),
+            isToday = isoDate == todayIso
+        ).also {
             calendar.add(Calendar.DAY_OF_YEAR, 1)
         }
     }

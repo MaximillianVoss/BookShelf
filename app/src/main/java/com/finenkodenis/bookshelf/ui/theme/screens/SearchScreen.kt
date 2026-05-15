@@ -76,11 +76,21 @@ fun SearchScreen(
 
         when (booksUiState) {
             is BooksUiState.Loading -> LoadingScreen(Modifier.fillMaxSize())
-            is BooksUiState.Success -> BooksGridScreen(
-                books = booksUiState.bookSearch,
-                modifier = Modifier,
-                onBookClicked = onBookClicked
-            )
+            is BooksUiState.Success -> {
+                booksUiState.message?.let { message ->
+                    Text(
+                        text = message,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                BooksGridScreen(
+                    books = booksUiState.bookSearch,
+                    modifier = Modifier,
+                    onBookClicked = onBookClicked
+                )
+            }
             is BooksUiState.Error -> ErrorScreen(
                 retryAction = retryAction,
                 modifier = Modifier.fillMaxSize(),

@@ -40,7 +40,10 @@ import retrofit2.HttpException
 import java.io.IOException
 
 sealed interface BooksUiState {
-    data class Success(val bookSearch: List<Book>) : BooksUiState
+    data class Success(
+        val bookSearch: List<Book>,
+        val message: String? = null
+    ) : BooksUiState
     data class Error(val message: String = "Не удалось загрузить книги") : BooksUiState
     object Loading : BooksUiState
 }
@@ -57,6 +60,13 @@ enum class AppSection(val title: String) {
     STATS("Статистика"),
     DETAIL("Книга"),
     READER("Чтение")
+}
+
+internal fun shouldFallbackToOpenLibraryAfterGoogleError(
+    source: BookSearchSource,
+    httpCode: Int? = null
+): Boolean {
+    return source == BookSearchSource.GOOGLE && (httpCode == null || httpCode == 429 || httpCode == 503)
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -282,10 +292,38 @@ class BooksViewModel(
                 try {
                     BooksUiState.Success(booksRepository.getBooks(query, maxResults, source))
                 } catch (e: IOException) {
-                    BooksUiState.Error(networkErrorMessage(source))
+                    if (shouldFallbackToOpenLibraryAfterGoogleError(source)) {
+                        loadOpenLibraryFallback(query, maxResults, "Google Books недоступен по сети. Показаны книги из Open Library.")
+                    } else {
+                        BooksUiState.Error(networkErrorMessage(source))
+                    }
                 } catch (e: HttpException) {
-                    BooksUiState.Error(httpErrorMessage(e, source))
+                    if (shouldFallbackToOpenLibraryAfterGoogleError(source, e.code())) {
+                        loadOpenLibraryFallback(query, maxResults, "Google Books временно недоступен (HTTP ${e.code()}). Показаны книги из Open Library.")
+                    } else {
+                        BooksUiState.Error(httpErrorMessage(e, source))
+                    }
                 }
+        }
+    }
+
+    private suspend fun loadOpenLibraryFallback(
+        query: String,
+        maxResults: Int,
+        message: String
+    ): BooksUiState {
+        return try {
+            val openLibraryBooks = booksRepository.getBooks(query, maxResults, BookSearchSource.OPEN_LIBRARY)
+            if (openLibraryBooks.isNotEmpty()) {
+                selectedSearchSource = BookSearchSource.OPEN_LIBRARY
+                BooksUiState.Success(openLibraryBooks, message)
+            } else {
+                val localBooks = booksRepository.getBooks(query, maxResults, BookSearchSource.LOCAL)
+                selectedSearchSource = BookSearchSource.LOCAL
+                BooksUiState.Success(localBooks, "$message Open Library ничего не вернула, показан локальный каталог.")
+            }
+        } catch (fallbackError: Exception) {
+            BooksUiState.Error("Google Books недоступен, резервный источник тоже не ответил. Выберите локальный каталог.")
         }
     }
 
@@ -301,6 +339,8 @@ class BooksViewModel(
         return when {
             source == BookSearchSource.GOOGLE && error.code() == 429 ->
                 "Google Books временно ограничил запросы (429). Добавьте GOOGLE_BOOKS_API_KEY в local.properties или выберите другой источник."
+            source == BookSearchSource.GOOGLE && error.code() == 503 ->
+                "Google Books временно недоступен (503). Выберите Open Library или локальный каталог."
             source == BookSearchSource.GOOGLE && error.code() == 403 ->
                 "Google Books отклонил запрос. Проверьте GOOGLE_BOOKS_API_KEY или выберите другой источник."
             source == BookSearchSource.GOOGLE ->

@@ -286,7 +286,7 @@ class LibraryRepository(
             totalMinutes = readingDays.sumOf { it.totalMinutes },
             totalPages = readingDays.sumOf { it.totalPages },
             readingDays = readingDays,
-            topGenres = recommendationEngine.topGenres(this)
+            topGenres = recommendationEngine.popularGenres(this)
         )
     }
 

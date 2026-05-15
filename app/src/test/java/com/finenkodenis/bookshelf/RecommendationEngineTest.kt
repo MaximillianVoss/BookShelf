@@ -1,6 +1,7 @@
 package com.finenkodenis.bookshelf
 
 import com.finenkodenis.bookshelf.data.Book
+import com.finenkodenis.bookshelf.data.GenreStat
 import com.finenkodenis.bookshelf.data.LibraryBook
 import com.finenkodenis.bookshelf.data.RecommendationEngine
 import com.finenkodenis.bookshelf.data.local.ReadingStatus
@@ -24,6 +25,34 @@ class RecommendationEngineTest {
         assertEquals("Science Fiction", result[0].genre)
         assertEquals(2, result[0].count)
         assertTrue(result.none { it.genre == "Programming" })
+    }
+
+    @Test
+    fun popularGenres_includesAllLibraryStatusesAndFiltersTechnicalTags() {
+        val library = listOf(
+            libraryBook("Dune", ReadingStatus.READ, listOf("Science Fiction", "Adventure")),
+            libraryBook("Foundation", ReadingStatus.WANT_TO_READ, listOf("science fiction")),
+            libraryBook(
+                title = "The Hobbit",
+                status = ReadingStatus.READING,
+                genres = listOf(
+                    "Adventure, Fantasy",
+                    "nyt:young-adult-paperback-monthly=2022-09-04",
+                    "etc."
+                )
+            )
+        )
+
+        val result = engine.popularGenres(library, limit = 4)
+
+        assertEquals(
+            listOf(
+                GenreStat("Adventure", 2),
+                GenreStat("Science Fiction", 2),
+                GenreStat("Fantasy", 1)
+            ),
+            result
+        )
     }
 
     @Test

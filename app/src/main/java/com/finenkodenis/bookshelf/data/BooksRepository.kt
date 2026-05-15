@@ -210,36 +210,7 @@ class NetworkBooksRepository(
     }
 
     private fun List<String>.toBookCategories(): List<String> {
-        return flatMap { it.splitCategoryText() }
-            .map { it.trimCategoryLabel() }
-            .filter { it.isUsefulCategory() }
-            .distinctBy { it.lowercase() }
-            .take(MAX_CATEGORIES)
-    }
-
-    private fun String.splitCategoryText(): List<String> {
-        return split(",", ";")
-            .map { it.trim() }
-            .filter { it.isNotBlank() }
-    }
-
-    private fun String.trimCategoryLabel(): String {
-        return removePrefix("Category:")
-            .replace("_", " ")
-            .replace(Regex("\\s+"), " ")
-            .trim()
-            .substringAfterLast(" -- ")
-            .trim()
-    }
-
-    private fun String.isUsefulCategory(): Boolean {
-        val normalized = lowercase().trim().trimEnd('.')
-        return isNotBlank() &&
-            length <= MAX_CATEGORY_LENGTH &&
-            HAS_LETTER_REGEX.containsMatchIn(this) &&
-            HUMAN_READABLE_CATEGORY_REGEX.matches(this) &&
-            !TECHNICAL_CATEGORY_REGEX.containsMatchIn(this) &&
-            normalized !in IGNORED_CATEGORY_LABELS
+        return BookCategoryNormalizer.normalize(this)
     }
 
     private fun Map<String, String>.firstValueForPrefix(prefix: String): String? {
@@ -255,25 +226,5 @@ class NetworkBooksRepository(
     private companion object {
         const val REMOTE_SOURCE_COUNT = 4
         const val MIN_RESULTS_PER_SOURCE = 6
-        const val MAX_CATEGORIES = 8
-        const val MAX_CATEGORY_LENGTH = 80
-
-        val HAS_LETTER_REGEX = Regex("\\p{L}")
-        val HUMAN_READABLE_CATEGORY_REGEX = Regex("^[\\p{L}\\p{N}][\\p{L}\\p{N}\\s'’&/.-]*$")
-        val TECHNICAL_CATEGORY_REGEX = Regex(
-            pattern = "(https?://|www\\.|[a-z0-9]+:[^\\s]+|=|\\d{4}-\\d{2}-\\d{2}|^[a-z0-9]+(-[a-z0-9]+){2,}$)",
-            option = RegexOption.IGNORE_CASE
-        )
-
-        val IGNORED_CATEGORY_LABELS = setOf(
-            "catalog",
-            "etc",
-            "et cetera",
-            "general collections",
-            "open library staff picks",
-            "open syllabus project",
-            "misc",
-            "miscellaneous"
-        )
     }
 }

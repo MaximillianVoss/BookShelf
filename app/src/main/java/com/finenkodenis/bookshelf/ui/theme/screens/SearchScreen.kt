@@ -16,6 +16,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -78,12 +79,7 @@ fun SearchScreen(
             is BooksUiState.Loading -> LoadingScreen(Modifier.fillMaxSize())
             is BooksUiState.Success -> {
                 booksUiState.message?.let { message ->
-                    Text(
-                        text = message,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    SearchNoticeBanner(message = message)
                 }
                 BooksGridScreen(
                     books = booksUiState.bookSearch,
@@ -97,6 +93,24 @@ fun SearchScreen(
                 message = booksUiState.message
             )
         }
+    }
+}
+
+@Composable
+private fun SearchNoticeBanner(message: String) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        shape = MaterialTheme.shapes.small
+    ) {
+        Text(
+            text = message,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            style = MaterialTheme.typography.bodySmall
+        )
     }
 }
 

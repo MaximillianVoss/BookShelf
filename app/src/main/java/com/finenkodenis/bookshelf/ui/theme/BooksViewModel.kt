@@ -293,13 +293,21 @@ class BooksViewModel(
                     BooksUiState.Success(booksRepository.getBooks(query, maxResults, source))
                 } catch (e: IOException) {
                     if (shouldFallbackToOpenLibraryAfterGoogleError(source)) {
-                        loadOpenLibraryFallback(query, maxResults, "Google Books недоступен по сети. Показаны книги из Open Library.")
+                        loadOpenLibraryFallback(
+                            query,
+                            maxResults,
+                            "Выбран источник: Google Books. Результаты: Open Library (резервный источник), потому что Google Books недоступен по сети."
+                        )
                     } else {
                         BooksUiState.Error(networkErrorMessage(source))
                     }
                 } catch (e: HttpException) {
                     if (shouldFallbackToOpenLibraryAfterGoogleError(source, e.code())) {
-                        loadOpenLibraryFallback(query, maxResults, "Google Books временно недоступен (HTTP ${e.code()}). Показаны книги из Open Library.")
+                        loadOpenLibraryFallback(
+                            query,
+                            maxResults,
+                            "Выбран источник: Google Books. Результаты: Open Library (резервный источник), потому что Google Books вернул HTTP ${e.code()}."
+                        )
                     } else {
                         BooksUiState.Error(httpErrorMessage(e, source))
                     }
@@ -318,7 +326,7 @@ class BooksViewModel(
                 BooksUiState.Success(openLibraryBooks, message)
             } else {
                 val localBooks = booksRepository.getBooks(query, maxResults, BookSearchSource.LOCAL)
-                BooksUiState.Success(localBooks, "$message Open Library ничего не вернула, показан локальный каталог.")
+                BooksUiState.Success(localBooks, "$message Open Library ничего не вернула. Результаты: локальный каталог.")
             }
         } catch (fallbackError: Exception) {
             BooksUiState.Error("Google Books недоступен, резервный источник тоже не ответил. Выберите локальный каталог.")

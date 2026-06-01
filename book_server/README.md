@@ -38,6 +38,12 @@ python -m venv venv
 .\venv\Scripts\python.exe -m book_server.main
 ```
 
+В PyCharm можно запускать и файл напрямую:
+
+```powershell
+.\venv\Scripts\python.exe book_server\main.py
+```
+
 ## API
 
 - `GET /health` - проверка, что сервер запущен.

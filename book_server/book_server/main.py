@@ -9,7 +9,10 @@ import struct
 from urllib.parse import parse_qs, unquote, urlparse
 import zlib
 
-from .catalog import BOOKS, MAX_SEARCH_LIMIT, book_to_api, category_list, get_book, search_books
+if __package__:
+    from .catalog import BOOKS, MAX_SEARCH_LIMIT, book_to_api, category_list, get_book, search_books
+else:
+    from catalog import BOOKS, MAX_SEARCH_LIMIT, book_to_api, category_list, get_book, search_books
 
 
 class BookServerHandler(BaseHTTPRequestHandler):

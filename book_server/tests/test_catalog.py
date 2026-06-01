@@ -1,3 +1,4 @@
+import subprocess
 import unittest
 from pathlib import Path
 import sys
@@ -72,6 +73,19 @@ class CatalogTest(unittest.TestCase):
         png = make_cover_png((1, 2, 3), width=8, height=8)
 
         self.assertTrue(png.startswith(b"\x89PNG\r\n\x1a\n"))
+
+    def test_main_script_supports_direct_pycharm_run(self):
+        main_path = Path(__file__).resolve().parents[1] / "book_server" / "main.py"
+
+        result = subprocess.run(
+            [sys.executable, str(main_path), "--help"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Run the BookShelf local book server", result.stdout)
 
 
 if __name__ == "__main__":

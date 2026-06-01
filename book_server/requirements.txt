@@ -1,0 +1,2 @@
+# Runtime dependencies are intentionally empty.
+# The local book server uses only the Python standard library.

@@ -15,6 +15,29 @@ python -m book_server.main
 
 Android-эмулятор обращается к нему по адресу `http://10.0.2.2:8000/`. На реальном телефоне нужно заменить базовый адрес в Android-клиенте на IP ноутбука в локальной сети.
 
+## Виртуальное окружение
+
+Сервер не требует внешних библиотек, но для PyCharm и воспроизводимого запуска добавлен `requirements.txt`.
+
+Создать окружение:
+
+```powershell
+cd book_server
+python -m venv venv
+```
+
+Установить зависимости:
+
+```powershell
+.\venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+Запустить сервер через окружение:
+
+```powershell
+.\venv\Scripts\python.exe -m book_server.main
+```
+
 ## API
 
 - `GET /health` - проверка, что сервер запущен.

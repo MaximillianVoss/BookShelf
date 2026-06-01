@@ -373,6 +373,7 @@ class BooksViewModel(
             BookSearchSource.GUTENDEX -> "Не удалось подключиться к Gutendex. Проверьте интернет или выберите другой источник."
             BookSearchSource.INTERNET_ARCHIVE -> "Не удалось подключиться к Internet Archive. Проверьте интернет или выберите другой источник."
             BookSearchSource.LIBRARY_OF_CONGRESS -> "Не удалось подключиться к Library of Congress. Проверьте интернет или выберите другой источник."
+            BookSearchSource.LOCAL_SERVER -> "Не удалось подключиться к локальному серверу. Запустите book_server на ноутбуке и повторите попытку."
             else -> "Не удалось загрузить книги. Проверьте интернет и повторите попытку."
         }
     }
@@ -387,6 +388,8 @@ class BooksViewModel(
                 "Не удалось загрузить книги из Internet Archive: HTTP ${error.code()}."
             source == BookSearchSource.LIBRARY_OF_CONGRESS ->
                 "Не удалось загрузить книги из Library of Congress: HTTP ${error.code()}."
+            source == BookSearchSource.LOCAL_SERVER ->
+                "Не удалось загрузить книги с локального сервера: HTTP ${error.code()}."
             else ->
                 "Не удалось загрузить книги: HTTP ${error.code()}."
         }

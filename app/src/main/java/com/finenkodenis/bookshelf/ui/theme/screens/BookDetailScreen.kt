@@ -40,6 +40,7 @@ import com.finenkodenis.bookshelf.R
 import com.finenkodenis.bookshelf.data.Book
 import com.finenkodenis.bookshelf.data.LibraryBook
 import com.finenkodenis.bookshelf.data.toSecureImageUrl
+import com.finenkodenis.bookshelf.data.toBookSourceLabel
 import com.finenkodenis.bookshelf.data.local.ReadingStatus
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -125,7 +126,7 @@ fun BookDetailScreen(
                 book.pageCount?.let {
                     Text("Страниц: $it", style = MaterialTheme.typography.bodyMedium)
                 }
-                Text("Источник: ${book.source}", style = MaterialTheme.typography.bodyMedium)
+                Text("Источник: ${book.source.toBookSourceLabel()}", style = MaterialTheme.typography.bodyMedium)
             }
         }
 

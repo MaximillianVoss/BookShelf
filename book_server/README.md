@@ -1,0 +1,30 @@
+# BookShelf Local Book Server
+
+Локальный Python-сервер для ветки `local-book-server`. Он отдает Android-приложению каталог книг, обложки и HTML-страницы для встроенного чтения.
+
+## Запуск
+
+```powershell
+cd book_server
+python -m book_server.main
+```
+
+По умолчанию сервер слушает `127.0.0.1:8000`.
+
+Android-эмулятор обращается к нему по адресу `http://10.0.2.2:8000/`. На реальном телефоне нужно заменить базовый адрес в Android-клиенте на IP ноутбука в локальной сети.
+
+## API
+
+- `GET /health` - проверка, что сервер запущен.
+- `GET /api/books?q=war&limit=20` - поиск книг.
+- `GET /api/books/{id}` - карточка книги.
+- `GET /api/books/{id}/content` - структурированный текст книги.
+- `GET /books/{id}/read` - HTML-страница для чтения во встроенном WebView.
+- `GET /api/books/{id}/cover.png` - простая PNG-обложка.
+
+## Тесты
+
+```powershell
+cd book_server
+python -m unittest discover -s tests
+```

@@ -526,7 +526,7 @@ app/src/main/java/com/finenkodenis/bookshelf/data/BooksRepository.kt
 suspend fun getBooks(query: String, maxResults: Int, source: BookSearchSource): List<Book>
 ```
 
-Параметр `source` задает источник поиска: все источники, только Open Library, Gutendex, Internet Archive, Library of Congress или локальный каталог.
+Параметр `source` задает источник поиска: все источники, только Open Library, Gutendex, Internet Archive, Library of Congress, локальный Python-сервер или локальный каталог.
 
 Значения `BookSearchSource`:
 
@@ -537,6 +537,7 @@ suspend fun getBooks(query: String, maxResults: Int, source: BookSearchSource): 
 | `GUTENDEX` | Gutendex | Поиск только по Project Gutenberg metadata |
 | `INTERNET_ARCHIVE` | Internet Archive | Поиск только в Internet Archive Advanced Search |
 | `LIBRARY_OF_CONGRESS` | Library of Congress | Поиск только в loc.gov JSON API |
+| `LOCAL_SERVER` | Наш сервер | Поиск через локальный Python-сервер `book_server` |
 | `LOCAL` | Локальный каталог | Резервный встроенный набор книг |
 
 ### `NetworkBooksRepository`
@@ -555,6 +556,7 @@ app/src/main/java/com/finenkodenis/bookshelf/data/BooksRepository.kt
 - `GutendexService` для Project Gutenberg metadata;
 - `InternetArchiveService` для Internet Archive Advanced Search;
 - `LibraryOfCongressService` для loc.gov JSON API;
+- `LocalBookServerService` для локального Python-сервера;
 - fallback-каталогом, если API не вернули результат.
 
 Логика:

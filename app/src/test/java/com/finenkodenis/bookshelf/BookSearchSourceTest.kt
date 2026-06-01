@@ -16,6 +16,7 @@ class BookSearchSourceTest {
                 "Gutendex",
                 "Internet Archive",
                 "Library of Congress",
+                "Наш сервер",
                 "Локальный каталог"
             ),
             titles

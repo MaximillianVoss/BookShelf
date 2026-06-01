@@ -4,6 +4,7 @@ import com.finenkodenis.bookshelf.data.BookSearchSource
 import com.finenkodenis.bookshelf.data.GUTENDEX_SOURCE
 import com.finenkodenis.bookshelf.data.INTERNET_ARCHIVE_SOURCE
 import com.finenkodenis.bookshelf.data.LIBRARY_OF_CONGRESS_SOURCE
+import com.finenkodenis.bookshelf.data.LOCAL_SERVER_SOURCE
 import com.finenkodenis.bookshelf.data.NetworkBooksRepository
 import com.finenkodenis.bookshelf.data.OPEN_LIBRARY_SOURCE
 import com.finenkodenis.bookshelf.network.model.GutendexBook
@@ -17,6 +18,9 @@ import com.finenkodenis.bookshelf.network.model.InternetArchiveService
 import com.finenkodenis.bookshelf.network.model.LibraryOfCongressItem
 import com.finenkodenis.bookshelf.network.model.LibraryOfCongressSearchResponse
 import com.finenkodenis.bookshelf.network.model.LibraryOfCongressService
+import com.finenkodenis.bookshelf.network.model.LocalBookServerBook
+import com.finenkodenis.bookshelf.network.model.LocalBookServerSearchResponse
+import com.finenkodenis.bookshelf.network.model.LocalBookServerService
 import com.finenkodenis.bookshelf.network.model.OpenLibraryDoc
 import com.finenkodenis.bookshelf.network.model.OPEN_LIBRARY_SEARCH_FIELDS
 import com.finenkodenis.bookshelf.network.model.OpenLibrarySearchResponse
@@ -119,6 +123,26 @@ class NetworkBooksRepositoryTest {
     }
 
     @Test
+    fun localServerSource_mapsServerFieldsToBook() = runTest {
+        val repository = repository(localBookServerService = StaticLocalBookServerService())
+
+        val books = repository.getBooks("war", maxResults = 5, source = BookSearchSource.LOCAL_SERVER)
+
+        val book = books.single()
+        assertEquals("war-and-peace-demo", book.externalId)
+        assertEquals("War and Peace", book.title)
+        assertEquals(listOf("Leo Tolstoy"), book.authors)
+        assertEquals("Server description", book.description)
+        assertEquals(listOf("Classics", "Historical Fiction"), book.categories)
+        assertEquals("1869", book.publishedDate)
+        assertEquals(1225, book.pageCount)
+        assertEquals("en", book.language)
+        assertEquals("http://10.0.2.2:8000/books/war-and-peace-demo/read", book.previewLink)
+        assertEquals("http://10.0.2.2:8000/api/books/war-and-peace-demo/cover.png", book.imageLink)
+        assertEquals(LOCAL_SERVER_SOURCE, book.source)
+    }
+
+    @Test
     fun allSource_keepsWorkingSourcesWhenAnotherApiFails() = runTest {
         val repository = repository(
             openLibraryService = StaticOpenLibraryService(),
@@ -152,13 +176,15 @@ class NetworkBooksRepositoryTest {
         openLibraryService: OpenLibraryService = EmptyOpenLibraryService(),
         gutendexService: GutendexService = EmptyGutendexService(),
         internetArchiveService: InternetArchiveService = EmptyInternetArchiveService(),
-        libraryOfCongressService: LibraryOfCongressService = EmptyLibraryOfCongressService()
+        libraryOfCongressService: LibraryOfCongressService = EmptyLibraryOfCongressService(),
+        localBookServerService: LocalBookServerService = EmptyLocalBookServerService()
     ): NetworkBooksRepository {
         return NetworkBooksRepository(
             openLibraryService = openLibraryService,
             gutendexService = gutendexService,
             internetArchiveService = internetArchiveService,
-            libraryOfCongressService = libraryOfCongressService
+            libraryOfCongressService = libraryOfCongressService,
+            localBookServerService = localBookServerService
         )
     }
 
@@ -351,6 +377,33 @@ class NetworkBooksRepositoryTest {
                         genre = JsonPrimitive("Mystery"),
                         language = JsonPrimitive("English"),
                         imageUrl = listOf("https://www.loc.gov/static/images/little-women.jpg")
+                    )
+                )
+            )
+        }
+    }
+
+    private class EmptyLocalBookServerService : LocalBookServerService {
+        override suspend fun searchBooks(query: String, limit: Int): LocalBookServerSearchResponse {
+            return LocalBookServerSearchResponse()
+        }
+    }
+
+    private class StaticLocalBookServerService : LocalBookServerService {
+        override suspend fun searchBooks(query: String, limit: Int): LocalBookServerSearchResponse {
+            return LocalBookServerSearchResponse(
+                items = listOf(
+                    LocalBookServerBook(
+                        id = "war-and-peace-demo",
+                        title = "War and Peace",
+                        authors = listOf("Leo Tolstoy"),
+                        description = "Server description",
+                        categories = listOf("Classics", "Historical Fiction"),
+                        publishedDate = "1869",
+                        pageCount = 1225,
+                        language = "en",
+                        readerUrl = "http://10.0.2.2:8000/books/war-and-peace-demo/read",
+                        coverUrl = "http://10.0.2.2:8000/api/books/war-and-peace-demo/cover.png"
                     )
                 )
             )

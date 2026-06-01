@@ -6,6 +6,8 @@ import com.finenkodenis.bookshelf.network.model.InternetArchiveDoc
 import com.finenkodenis.bookshelf.network.model.InternetArchiveService
 import com.finenkodenis.bookshelf.network.model.LibraryOfCongressItem
 import com.finenkodenis.bookshelf.network.model.LibraryOfCongressService
+import com.finenkodenis.bookshelf.network.model.LocalBookServerBook
+import com.finenkodenis.bookshelf.network.model.LocalBookServerService
 import com.finenkodenis.bookshelf.network.model.OpenLibraryDoc
 import com.finenkodenis.bookshelf.network.model.OpenLibraryService
 import com.google.gson.JsonElement
@@ -25,7 +27,8 @@ class NetworkBooksRepository(
     private val openLibraryService: OpenLibraryService,
     private val gutendexService: GutendexService,
     private val internetArchiveService: InternetArchiveService,
-    private val libraryOfCongressService: LibraryOfCongressService
+    private val libraryOfCongressService: LibraryOfCongressService,
+    private val localBookServerService: LocalBookServerService
 ) : BooksRepository {
     override suspend fun getBooks(
         query: String,
@@ -40,6 +43,7 @@ class NetworkBooksRepository(
             BookSearchSource.GUTENDEX -> getGutendexBooks(normalizedQuery, safeLimit)
             BookSearchSource.INTERNET_ARCHIVE -> getInternetArchiveBooks(normalizedQuery, safeLimit)
             BookSearchSource.LIBRARY_OF_CONGRESS -> getLibraryOfCongressBooks(normalizedQuery, safeLimit)
+            BookSearchSource.LOCAL_SERVER -> getLocalServerBooks(normalizedQuery, safeLimit)
             BookSearchSource.LOCAL -> emptyList()
         }
 
@@ -58,8 +62,9 @@ class NetworkBooksRepository(
         val gutendexBooks = runCatching { getGutendexBooks(query, sourceLimit) }.getOrDefault(emptyList())
         val internetArchiveBooks = runCatching { getInternetArchiveBooks(query, sourceLimit) }.getOrDefault(emptyList())
         val libraryOfCongressBooks = runCatching { getLibraryOfCongressBooks(query, sourceLimit) }.getOrDefault(emptyList())
+        val localServerBooks = runCatching { getLocalServerBooks(query, sourceLimit) }.getOrDefault(emptyList())
 
-        return (openLibraryBooks + gutendexBooks + internetArchiveBooks + libraryOfCongressBooks)
+        return (openLibraryBooks + gutendexBooks + internetArchiveBooks + libraryOfCongressBooks + localServerBooks)
             .distinctBy { it.deduplicationKey() }
             .take(maxResults)
     }
@@ -91,6 +96,13 @@ class NetworkBooksRepository(
             query = query.toPlainBookQuery(),
             count = min(limit, MAX_REMOTE_RESULTS)
         ).results.mapNotNull { it.toBook() }
+    }
+
+    private suspend fun getLocalServerBooks(query: String, limit: Int): List<Book> {
+        return localBookServerService.searchBooks(
+            query = query.toPlainBookQuery(),
+            limit = min(limit, MAX_REMOTE_RESULTS)
+        ).items.mapNotNull { it.toBook() }
     }
 
     private fun OpenLibraryDoc.toBook(): Book {
@@ -164,6 +176,23 @@ class NetworkBooksRepository(
         )
     }
 
+    private fun LocalBookServerBook.toBook(): Book? {
+        val bookId = id?.takeIf { it.isNotBlank() } ?: return null
+        return Book(
+            externalId = bookId,
+            source = LOCAL_SERVER_SOURCE,
+            title = title?.takeIf { it.isNotBlank() } ?: return null,
+            authors = authors.filter { it.isNotBlank() },
+            description = description,
+            categories = categories.toBookCategories(),
+            publishedDate = publishedDate,
+            pageCount = pageCount,
+            language = language,
+            previewLink = readerUrl,
+            imageLink = coverUrl
+        )
+    }
+
     private fun String.toPlainBookQuery(): String {
         return removePrefix("subject:").trim().ifBlank { this }
     }
@@ -227,7 +256,7 @@ class NetworkBooksRepository(
     }
 
     private companion object {
-        const val REMOTE_SOURCE_COUNT = 4
+        const val REMOTE_SOURCE_COUNT = 5
         const val MIN_RESULTS_PER_SOURCE = 6
         const val MAX_REMOTE_RESULTS = 100
         const val GUTENDEX_PAGE_SIZE = 32

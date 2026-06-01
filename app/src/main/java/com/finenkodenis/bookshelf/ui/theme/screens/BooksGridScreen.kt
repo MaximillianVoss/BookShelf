@@ -3,6 +3,7 @@ package com.finenkodenis.bookshelf.ui.theme.screens
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -42,11 +43,12 @@ fun BooksGridScreen(
     onLoadMore: () -> Unit = {}
 ) {
     LazyVerticalGrid(
+        modifier = modifier.fillMaxSize(),
         columns = GridCells.Adaptive(150.dp),
         contentPadding = PaddingValues(4.dp)
     ) {
         itemsIndexed(books) { _, book ->
-            BooksCard(book = book, modifier, onBookClicked)
+            BooksCard(book = book, modifier = Modifier, onBookClicked = onBookClicked)
         }
         if (canLoadMore) {
             item(span = { GridItemSpan(maxLineSpan) }) {

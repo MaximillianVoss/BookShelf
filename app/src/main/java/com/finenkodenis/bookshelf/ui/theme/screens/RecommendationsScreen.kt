@@ -72,7 +72,7 @@ fun RecommendationsScreen(
                 } else {
                     BooksGridScreen(
                         books = booksUiState.bookSearch,
-                        modifier = Modifier,
+                        modifier = Modifier.weight(1f),
                         onBookClicked = onBookClicked,
                         canLoadMore = booksUiState.canLoadMore,
                         isLoadingMore = booksUiState.isLoadingMore,

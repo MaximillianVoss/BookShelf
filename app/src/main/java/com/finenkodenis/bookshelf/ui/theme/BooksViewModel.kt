@@ -344,9 +344,20 @@ class BooksViewModel(
             booksUiState =
                 try {
                     val books = booksRepository.getBooks(query, maxResults, source)
+                    val previousBookCount = if (isLoadingMore) {
+                        currentSuccess?.bookSearch?.size ?: 0
+                    } else {
+                        0
+                    }
                     BooksUiState.Success(
                         bookSearch = books,
-                        canLoadMore = books.size >= maxResults && maxResults < MAX_SEARCH_RESULTS
+                        canLoadMore = shouldOfferLoadMore(
+                            itemCount = books.size,
+                            requestedLimit = maxResults,
+                            maxLimit = MAX_SEARCH_RESULTS,
+                            isLoadingMore = isLoadingMore,
+                            previousItemCount = previousBookCount
+                        )
                     )
                 } catch (e: IOException) {
                     BooksUiState.Error(networkErrorMessage(source))
@@ -466,11 +477,16 @@ class BooksViewModel(
                     minResults = recommendationLimit
                 )
                 if (cachedBooks != null) {
+                    val visibleBooks = cachedBooks.take(recommendationLimit)
                     recommendationsUiState = BooksUiState.Success(
-                        bookSearch = cachedBooks.take(recommendationLimit),
+                        bookSearch = visibleBooks,
                         message = "Показана сохраненная подборка. Нажмите «Обновить», чтобы загрузить новую.",
-                        canLoadMore = cachedBooks.size >= recommendationLimit &&
-                            recommendationLimit < MAX_RECOMMENDATION_RESULTS,
+                        canLoadMore = shouldOfferLoadMore(
+                            itemCount = visibleBooks.size,
+                            requestedLimit = recommendationLimit,
+                            maxLimit = MAX_RECOMMENDATION_RESULTS,
+                            isLoadingMore = false
+                        ),
                         isFromCache = true
                     )
                     return@launch
@@ -497,11 +513,21 @@ class BooksViewModel(
                 val recommendations = recommendationEngine
                     .filterAlreadyAdded(candidates, library)
                     .take(recommendationLimit)
+                val previousRecommendationCount = if (isLoadingMore) {
+                    currentSuccess?.bookSearch?.size ?: 0
+                } else {
+                    0
+                }
                 libraryRepository.saveRecommendationCache(user.id, cacheKey, recommendations)
                 recommendationsUiState = BooksUiState.Success(
                     bookSearch = recommendations,
-                    canLoadMore = recommendations.size >= recommendationLimit &&
-                        recommendationLimit < MAX_RECOMMENDATION_RESULTS
+                    canLoadMore = shouldOfferLoadMore(
+                        itemCount = recommendations.size,
+                        requestedLimit = recommendationLimit,
+                        maxLimit = MAX_RECOMMENDATION_RESULTS,
+                        isLoadingMore = isLoadingMore,
+                        previousItemCount = previousRecommendationCount
+                    )
                 )
             } catch (e: IOException) {
                 recommendationsUiState = BooksUiState.Error("Не удалось загрузить рекомендации")

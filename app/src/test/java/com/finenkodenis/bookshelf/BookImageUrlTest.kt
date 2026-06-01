@@ -22,6 +22,17 @@ class BookImageUrlTest {
     }
 
     @Test
+    fun toSecureImageUrl_keepsLocalServerHttpUrlUnchanged() {
+        val emulatorUrl = "http://10.0.2.2:8000/api/books/war-and-peace-demo/cover.png"
+        val localhostUrl = "http://127.0.0.1:8000/api/books/alice-demo/cover.png"
+        val lanUrl = "http://192.168.1.25:8000/api/books/comics-demo-01/cover.png"
+
+        assertEquals(emulatorUrl, emulatorUrl.toSecureImageUrl())
+        assertEquals(localhostUrl, localhostUrl.toSecureImageUrl())
+        assertEquals(lanUrl, lanUrl.toSecureImageUrl())
+    }
+
+    @Test
     fun toSecureImageUrl_returnsNullForBlankValue() {
         assertNull("  ".toSecureImageUrl())
     }

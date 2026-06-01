@@ -19,7 +19,17 @@ class BookRecord:
     chapters: tuple[str, ...]
 
 
-BOOKS: tuple[BookRecord, ...] = (
+@dataclass(frozen=True)
+class GenreSeed:
+    key: str
+    display: str
+    topics: tuple[str, ...]
+    color: tuple[int, int, int]
+    title_word: str
+    description_focus: str
+
+
+FEATURED_BOOKS: tuple[BookRecord, ...] = (
     BookRecord(
         id="war-and-peace-demo",
         title="War and Peace",
@@ -122,9 +132,171 @@ BOOKS: tuple[BookRecord, ...] = (
 )
 
 
+GENRE_SEEDS: tuple[GenreSeed, ...] = (
+    GenreSeed(
+        key="fantasy",
+        display="Fantasy",
+        topics=("Magic", "Epic Quest", "Mythic Worlds", "Dragons"),
+        color=(86, 80, 143),
+        title_word="Realm",
+        description_focus="magic systems, unusual kingdoms, and personal courage",
+    ),
+    GenreSeed(
+        key="science-fiction",
+        display="Science Fiction",
+        topics=("Space", "Future Society", "Robotics", "Time Travel"),
+        color=(60, 103, 155),
+        title_word="Signal",
+        description_focus="technology, space travel, and the social cost of invention",
+    ),
+    GenreSeed(
+        key="detective",
+        display="Detective",
+        topics=("Investigation", "Crime", "Evidence", "Private Detective"),
+        color=(67, 84, 96),
+        title_word="Case",
+        description_focus="clues, witnesses, motives, and careful reconstruction of events",
+    ),
+    GenreSeed(
+        key="romance",
+        display="Romance",
+        topics=("Relationships", "Family", "Letters", "Modern Love"),
+        color=(151, 74, 103),
+        title_word="Letter",
+        description_focus="relationships, trust, family expectations, and emotional choice",
+    ),
+    GenreSeed(
+        key="classic-literature",
+        display="Classic Literature",
+        topics=("Classics", "Social Fiction", "Moral Choice", "Literary Fiction"),
+        color=(117, 88, 61),
+        title_word="Portrait",
+        description_focus="society, language, conflict, and long-term moral consequences",
+    ),
+    GenreSeed(
+        key="horror",
+        display="Horror",
+        topics=("Supernatural", "Suspense", "Gothic", "Fear"),
+        color=(96, 55, 71),
+        title_word="Shadow",
+        description_focus="fear, isolation, disturbing discoveries, and hidden threats",
+    ),
+    GenreSeed(
+        key="adventure",
+        display="Adventure",
+        topics=("Travel", "Expedition", "Survival", "Sea Stories"),
+        color=(48, 111, 92),
+        title_word="Expedition",
+        description_focus="travel, risk, survival, and decisions under pressure",
+    ),
+    GenreSeed(
+        key="psychology",
+        display="Psychology",
+        topics=("Self Development", "Habits", "Communication", "Motivation"),
+        color=(97, 103, 79),
+        title_word="Mind",
+        description_focus="habits, motivation, memory, communication, and behavior patterns",
+    ),
+    GenreSeed(
+        key="business",
+        display="Business",
+        topics=("Management", "Startup", "Marketing", "Finance"),
+        color=(54, 113, 124),
+        title_word="Strategy",
+        description_focus="teams, markets, planning, finance, and practical decision making",
+    ),
+    GenreSeed(
+        key="history",
+        display="History",
+        topics=("World History", "Culture", "War", "Civilization"),
+        color=(128, 83, 55),
+        title_word="Chronicle",
+        description_focus="events, culture, institutions, and how historical change happens",
+    ),
+    GenreSeed(
+        key="biography",
+        display="Biography",
+        topics=("Memoir", "Leadership", "Artists", "Scientists"),
+        color=(96, 91, 129),
+        title_word="Life",
+        description_focus="personal growth, professional choices, failures, and achievements",
+    ),
+    GenreSeed(
+        key="programming",
+        display="Programming",
+        topics=("Kotlin", "Android", "Software Design", "Algorithms"),
+        color=(58, 93, 133),
+        title_word="Code",
+        description_focus="software design, debugging, APIs, data, and maintainable code",
+    ),
+    GenreSeed(
+        key="children",
+        display="Children",
+        topics=("Children's Literature", "School", "Friendship", "Imagination"),
+        color=(150, 111, 62),
+        title_word="Story",
+        description_focus="friendship, imagination, school life, and simple moral choices",
+    ),
+    GenreSeed(
+        key="comics",
+        display="Comics",
+        topics=("Graphic Novel", "Superheroes", "Humor", "Visual Storytelling"),
+        color=(62, 114, 151),
+        title_word="Panel",
+        description_focus="visual storytelling, expressive scenes, conflict, and humor",
+    ),
+)
+
+BOOKS_PER_GENRE = 9
+MAIN_GENRE_LABELS = tuple(seed.display for seed in GENRE_SEEDS)
+MAX_SEARCH_LIMIT = 150
+
+
+def generate_genre_books(seed: GenreSeed, seed_index: int) -> tuple[BookRecord, ...]:
+    return tuple(
+        BookRecord(
+            id=f"{seed.key}-demo-{number:02d}",
+            title=f"{seed.display} {seed.title_word} {number:02d}",
+            authors=(f"{seed.display} Demo Author {number:02d}",),
+            description=(
+                f"A test {seed.display.lower()} book about {seed.description_focus}. "
+                f"It is generated for demo search, recommendations, and in-app reading scenarios."
+            ),
+            categories=(
+                seed.display,
+                seed.topics[(number - 1) % len(seed.topics)],
+                seed.topics[number % len(seed.topics)],
+            ),
+            published_date=str(2001 + ((seed_index * BOOKS_PER_GENRE + number) % 24)),
+            page_count=120 + ((seed_index * 29 + number * 17) % 420),
+            language="en",
+            color=shift_color(seed.color, number),
+            chapters=(
+                f"Part 1. This {seed.display.lower()} demo book introduces the main theme: "
+                f"{seed.description_focus}.",
+                f"Part 2. The conflict develops through {seed.topics[(number - 1) % len(seed.topics)].lower()} "
+                f"and {seed.topics[number % len(seed.topics)].lower()}.",
+                f"Part 3. The ending gives enough material to test reading progress, statistics, and genre metadata.",
+            ),
+        )
+        for number in range(1, BOOKS_PER_GENRE + 1)
+    )
+
+
+def shift_color(color: tuple[int, int, int], offset: int) -> tuple[int, int, int]:
+    return tuple(min(220, max(35, channel + (offset % 5) * 9 - 18)) for channel in color)
+
+
+BOOKS: tuple[BookRecord, ...] = FEATURED_BOOKS + tuple(
+    book
+    for seed_index, seed in enumerate(GENRE_SEEDS)
+    for book in generate_genre_books(seed, seed_index)
+)
+
+
 def search_books(query: str, limit: int) -> list[BookRecord]:
     normalized_query = normalize(query)
-    safe_limit = max(1, min(limit, 100))
+    safe_limit = max(1, min(limit, MAX_SEARCH_LIMIT))
     if not normalized_query or normalized_query == "book":
         return list(BOOKS[:safe_limit])
 

@@ -2,6 +2,8 @@
 
 Локальный Python-сервер для ветки `local-book-server`. Он отдает Android-приложению каталог книг, обложки и HTML-страницы для встроенного чтения.
 
+Каталог содержит 132 тестовые книги: 6 базовых классических записей и 126 сгенерированных демо-книг по основным жанрам Android-приложения.
+
 ## Запуск
 
 ```powershell
@@ -21,6 +23,27 @@ Android-эмулятор обращается к нему по адресу `htt
 - `GET /api/books/{id}/content` - структурированный текст книги.
 - `GET /books/{id}/read` - HTML-страница для чтения во встроенном WebView.
 - `GET /api/books/{id}/cover.png` - простая PNG-обложка.
+
+## Жанры тестового набора
+
+По 9 книг добавлено для каждого жанра:
+
+- Fantasy
+- Science Fiction
+- Detective
+- Romance
+- Classic Literature
+- Horror
+- Adventure
+- Psychology
+- Business
+- History
+- Biography
+- Programming
+- Children
+- Comics
+
+Эти названия специально совпадают с жанровыми запросами Android-приложения, например `subject:fantasy`, `subject:science fiction`, `subject:programming`.
 
 ## Тесты
 

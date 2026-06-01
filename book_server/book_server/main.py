@@ -9,7 +9,7 @@ import struct
 from urllib.parse import parse_qs, unquote, urlparse
 import zlib
 
-from .catalog import BOOKS, book_to_api, category_list, get_book, search_books
+from .catalog import BOOKS, MAX_SEARCH_LIMIT, book_to_api, category_list, get_book, search_books
 
 
 class BookServerHandler(BaseHTTPRequestHandler):
@@ -108,7 +108,7 @@ class BookServerHandler(BaseHTTPRequestHandler):
 
 def parse_limit(value: str) -> int:
     try:
-        return max(1, min(int(value), 100))
+        return max(1, min(int(value), MAX_SEARCH_LIMIT))
     except ValueError:
         return 20
 

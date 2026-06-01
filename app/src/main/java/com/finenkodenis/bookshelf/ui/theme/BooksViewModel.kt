@@ -38,11 +38,17 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import java.io.IOException
+import kotlin.math.ceil
+import kotlin.math.max
+import kotlin.math.min
 
 sealed interface BooksUiState {
     data class Success(
         val bookSearch: List<Book>,
-        val message: String? = null
+        val message: String? = null,
+        val canLoadMore: Boolean = false,
+        val isLoadingMore: Boolean = false,
+        val isFromCache: Boolean = false
     ) : BooksUiState
     data class Error(val message: String = "Не удалось загрузить книги") : BooksUiState
     object Loading : BooksUiState
@@ -53,10 +59,10 @@ enum class SearchWidgetState {
     CLOSED
 }
 
-enum class AppSection(val title: String) {
+enum class AppSection(val title: String, val navTitle: String = title) {
     SEARCH("Поиск"),
     LIBRARY("Библиотека"),
-    RECOMMENDATIONS("Рекомендации"),
+    RECOMMENDATIONS("Рекомендации", "Реком."),
     STATS("Статистика"),
     DETAIL("Книга"),
     READER("Чтение")
@@ -100,6 +106,9 @@ class BooksViewModel(
     var readerStartedAtMillis: Long? by mutableStateOf(null)
         private set
 
+    var readerInitialScrollY: Int by mutableStateOf(0)
+        private set
+
     private val currentUserId = MutableStateFlow<Long?>(null)
     private val libraryFilter = MutableStateFlow<ReadingStatus?>(null)
 
@@ -137,6 +146,10 @@ class BooksViewModel(
 
     var selectedSearchSource: BookSearchSource by mutableStateOf(BookSearchSource.ALL)
         private set
+
+    private var activeSearchQuery: String = "book"
+    private var searchLimit: Int = SEARCH_PAGE_SIZE
+    private var recommendationLimit: Int = RECOMMENDATION_PAGE_SIZE
 
     init {
         getBooks()
@@ -217,6 +230,8 @@ class BooksViewModel(
         readerUrl = null
         readerTitle = ""
         readerStartedAtMillis = null
+        readerInitialScrollY = 0
+        recommendationsUiState = BooksUiState.Success(emptyList())
         currentSection = AppSection.SEARCH
     }
 
@@ -237,17 +252,30 @@ class BooksViewModel(
     }
 
     fun openReader(book: Book) {
-        val url = book.previewLink ?: return
-        readerUrl = url
+        val previewUrl = book.previewLink ?: return
+        val savedUrl = selectedLibraryBook?.lastReadingUrl?.takeIf { it.isNotBlank() }
+        readerUrl = savedUrl ?: previewUrl
         readerTitle = book.title
+        readerInitialScrollY = if (savedUrl != null) selectedLibraryBook?.lastScrollY ?: 0 else 0
         readerStartedAtMillis = System.currentTimeMillis()
         currentSection = AppSection.READER
     }
 
-    fun closeReader() {
+    fun closeReader(currentUrl: String? = null, scrollY: Int = 0) {
+        val libraryBook = selectedLibraryBook
+        if (libraryBook != null) {
+            viewModelScope.launch {
+                libraryRepository.updateReadingPosition(
+                    userBookId = libraryBook.userBookId,
+                    readingUrl = currentUrl ?: readerUrl,
+                    scrollY = scrollY
+                )
+            }
+        }
         readerUrl = null
         readerTitle = ""
         readerStartedAtMillis = null
+        readerInitialScrollY = 0
         currentSection = AppSection.DETAIL
     }
 
@@ -256,7 +284,7 @@ class BooksViewModel(
         return ReadingTimer.elapsedMinutes(startedAt, System.currentTimeMillis())
     }
 
-    fun saveReaderSession(minutesRead: Int) {
+    fun saveReaderSession(minutesRead: Int, currentUrl: String?, scrollY: Int) {
         val user = currentUser ?: return
         val book = selectedBook ?: return
         val normalizedMinutes = minutesRead.coerceAtLeast(1)
@@ -269,21 +297,57 @@ class BooksViewModel(
                 pagesRead = 0,
                 note = "Автоматически засчитано из встроенного чтения"
             )
-            selectedLibraryBook = libraryBook
+            libraryRepository.updateReadingPosition(
+                userBookId = libraryBook.userBookId,
+                readingUrl = currentUrl ?: readerUrl,
+                scrollY = scrollY
+            )
+            selectedLibraryBook = libraryBook.copy(
+                lastReadingUrl = currentUrl ?: readerUrl,
+                lastScrollY = scrollY.coerceAtLeast(0)
+            )
             closeReader()
         }
     }
 
     fun getBooks(
-        query: String = "book",
-        maxResults: Int = 40,
+        query: String = activeSearchQuery,
+        maxResults: Int = SEARCH_PAGE_SIZE,
         source: BookSearchSource = selectedSearchSource
     ) {
+        val normalizedQuery = query.trim().ifBlank { "book" }
+        activeSearchQuery = normalizedQuery
+        searchLimit = maxResults.coerceIn(SEARCH_PAGE_SIZE, MAX_SEARCH_RESULTS)
+        loadBooks(normalizedQuery, searchLimit, source, isLoadingMore = false)
+    }
+
+    fun loadMoreBooks() {
+        val nextLimit = min(searchLimit + SEARCH_PAGE_SIZE, MAX_SEARCH_RESULTS)
+        if (nextLimit == searchLimit) return
+        searchLimit = nextLimit
+        loadBooks(activeSearchQuery, nextLimit, selectedSearchSource, isLoadingMore = true)
+    }
+
+    private fun loadBooks(
+        query: String,
+        maxResults: Int,
+        source: BookSearchSource,
+        isLoadingMore: Boolean
+    ) {
         viewModelScope.launch {
-            booksUiState = BooksUiState.Loading
+            val currentSuccess = booksUiState as? BooksUiState.Success
+            booksUiState = if (isLoadingMore && currentSuccess != null) {
+                currentSuccess.copy(isLoadingMore = true)
+            } else {
+                BooksUiState.Loading
+            }
             booksUiState =
                 try {
-                    BooksUiState.Success(booksRepository.getBooks(query, maxResults, source))
+                    val books = booksRepository.getBooks(query, maxResults, source)
+                    BooksUiState.Success(
+                        bookSearch = books,
+                        canLoadMore = books.size >= maxResults && maxResults < MAX_SEARCH_RESULTS
+                    )
                 } catch (e: IOException) {
                     BooksUiState.Error(networkErrorMessage(source))
                 } catch (e: HttpException) {
@@ -371,19 +435,73 @@ class BooksViewModel(
         }
     }
 
-    fun loadRecommendations() {
+    fun refreshRecommendations() {
+        loadRecommendations(forceRefresh = true, maxResults = RECOMMENDATION_PAGE_SIZE)
+    }
+
+    fun loadMoreRecommendations() {
+        val nextLimit = min(recommendationLimit + RECOMMENDATION_PAGE_SIZE, MAX_RECOMMENDATION_RESULTS)
+        if (nextLimit == recommendationLimit) return
+        loadRecommendations(forceRefresh = false, maxResults = nextLimit, isLoadingMore = true)
+    }
+
+    fun loadRecommendations(
+        forceRefresh: Boolean = false,
+        maxResults: Int = RECOMMENDATION_PAGE_SIZE,
+        isLoadingMore: Boolean = false
+    ) {
+        val user = currentUser ?: return
         viewModelScope.launch {
-            recommendationsUiState = BooksUiState.Loading
             val library = allLibraryBooks.value
             val queries = recommendationEngine.recommendationQueries(libraryRepository.topGenres(library))
+            val cacheKey = queries.joinToString(separator = "|") { it.lowercase() }
+            recommendationLimit = maxResults.coerceIn(RECOMMENDATION_PAGE_SIZE, MAX_RECOMMENDATION_RESULTS)
+
+            if (forceRefresh) {
+                libraryRepository.clearRecommendationCache(user.id)
+            } else {
+                val cachedBooks = libraryRepository.getCachedRecommendations(
+                    userId = user.id,
+                    cacheKey = cacheKey,
+                    minResults = recommendationLimit
+                )
+                if (cachedBooks != null) {
+                    recommendationsUiState = BooksUiState.Success(
+                        bookSearch = cachedBooks.take(recommendationLimit),
+                        message = "Показана сохраненная подборка. Нажмите «Обновить», чтобы загрузить новую.",
+                        canLoadMore = cachedBooks.size >= recommendationLimit &&
+                            recommendationLimit < MAX_RECOMMENDATION_RESULTS,
+                        isFromCache = true
+                    )
+                    return@launch
+                }
+            }
+
+            val currentSuccess = recommendationsUiState as? BooksUiState.Success
+            recommendationsUiState = if (isLoadingMore && currentSuccess != null) {
+                currentSuccess.copy(isLoadingMore = true)
+            } else {
+                BooksUiState.Loading
+            }
+
             val candidates = mutableListOf<Book>()
 
             try {
+                val perQueryLimit = max(
+                    RECOMMENDATION_MIN_RESULTS_PER_QUERY,
+                    ceil(recommendationLimit * 1.5 / queries.size).toInt()
+                )
                 queries.forEach { query ->
-                    candidates += booksRepository.getBooks(query, 12)
+                    candidates += booksRepository.getBooks(query, perQueryLimit)
                 }
+                val recommendations = recommendationEngine
+                    .filterAlreadyAdded(candidates, library)
+                    .take(recommendationLimit)
+                libraryRepository.saveRecommendationCache(user.id, cacheKey, recommendations)
                 recommendationsUiState = BooksUiState.Success(
-                    recommendationEngine.filterAlreadyAdded(candidates, library).take(24)
+                    bookSearch = recommendations,
+                    canLoadMore = recommendations.size >= recommendationLimit &&
+                        recommendationLimit < MAX_RECOMMENDATION_RESULTS
                 )
             } catch (e: IOException) {
                 recommendationsUiState = BooksUiState.Error("Не удалось загрузить рекомендации")
@@ -403,6 +521,11 @@ class BooksViewModel(
     companion object {
         const val DEMO_LOGIN = DEMO_USERNAME
         const val DEMO_PASS = DEMO_PASSWORD
+        private const val SEARCH_PAGE_SIZE = 20
+        private const val MAX_SEARCH_RESULTS = 100
+        private const val RECOMMENDATION_PAGE_SIZE = 24
+        private const val MAX_RECOMMENDATION_RESULTS = 96
+        private const val RECOMMENDATION_MIN_RESULTS_PER_QUERY = 12
 
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {

@@ -142,6 +142,7 @@ app/src/main/java/com/finenkodenis/bookshelf/ui/theme/BooksViewModel.kt
 - изменение статусов, оценок и отзывов;
 - запуск встроенного чтения;
 - учет времени чтения;
+- восстановление последней позиции встроенного чтения;
 - загрузку рекомендаций;
 - выдачу потоков библиотеки и статистики для UI.
 
@@ -158,6 +159,7 @@ selectedLibraryBook
 readerUrl
 readerTitle
 readerStartedAtMillis
+readerInitialScrollY
 ```
 
 Ключевые методы:
@@ -389,14 +391,15 @@ WebViewClient
 Основные задачи:
 
 - открыть `previewLink` книги внутри приложения;
+- восстановить последнюю сохраненную позицию прокрутки, если книга уже читалась;
 - перехватить кнопку назад;
 - показать диалог `Засчитать чтение?`;
-- передать рассчитанное время чтения во ViewModel.
+- передать рассчитанное время чтения, текущий URL и прокрутку во ViewModel.
 
 Если пользователь подтверждает учет, вызывается:
 
 ```kotlin
-onSaveReadingSession(minutes)
+onSaveReadingSession(minutes, currentUrl, scrollY)
 ```
 
 ### `RecommendationsScreen`
@@ -414,9 +417,10 @@ app/src/main/java/com/finenkodenis/bookshelf/ui/theme/screens/RecommendationsScr
 - заголовок подборки;
 - основные жанры пользователя;
 - кнопку обновления;
+- кнопку `Показать еще` для загрузки большего количества рекомендаций;
 - список рекомендованных книг.
 
-Если у пользователя нет прочитанных книг, показывается базовая подборка.
+Если у пользователя нет прочитанных книг, показывается базовая подборка. Найденная подборка кешируется в локальной БД, чтобы при следующем открытии экрана пользователь увидел уже найденные рекомендации и мог обновить их вручную.
 
 ### `StatsScreen`
 
@@ -581,6 +585,7 @@ app/src/main/java/com/finenkodenis/bookshelf/data/LibraryRepository.kt
 - `BookDao`;
 - `UserBookDao`;
 - `ReadingSessionDao`;
+- `RecommendationCacheDao`;
 - `RecommendationEngine`.
 
 Основные методы:
@@ -592,6 +597,7 @@ observeStats(userId)
 addOrUpdateBook(userId, book, status, rating, review)
 updateLibraryBook(userBookId, status, rating, review)
 addReadingSession(userBookId, minutesRead, pagesRead, note, readDate)
+updateReadingPosition(userBookId, readingUrl, scrollY)
 ensureBookForReading(userId, book)
 seedDemoData(userId)
 topGenres(library)
@@ -603,6 +609,8 @@ topGenres(library)
 - связывает пользователя и книгу через `user_books`;
 - обновляет статус, оценку и отзыв;
 - сохраняет дни чтения в `reading_sessions`;
+- сохраняет последнюю позицию встроенного чтения в `user_books`;
+- кеширует список рекомендаций в `recommendation_cache`;
 - собирает статистику `LibraryStats`;
 - добавляет демо-данные для демо-пользователя.
 
@@ -760,6 +768,16 @@ count
 
 Используется в статистике и рекомендациях.
 
+### `BookCategoryNormalizer`
+
+Файл:
+
+```text
+app/src/main/java/com/finenkodenis/bookshelf/data/BookCategoryNormalizer.kt
+```
+
+Очищает и нормализует жанры из внешних источников. Убирает технические метки, ссылки, значения с датами, служебные категории и разбивает строки с несколькими темами через запятую или точку с запятой.
+
 ### `BookGenre`
 
 Файл:
@@ -903,6 +921,7 @@ abstract fun userDao(): UserDao
 abstract fun bookDao(): BookDao
 abstract fun userBookDao(): UserBookDao
 abstract fun readingSessionDao(): ReadingSessionDao
+abstract fun recommendationCacheDao(): RecommendationCacheDao
 ```
 
 Имя БД:
@@ -983,6 +1002,7 @@ Room-сущность таблицы `user_books`.
 - дату добавления;
 - дату начала чтения;
 - дату завершения чтения;
+- последнюю ссылку и прокрутку встроенного чтения;
 - дату обновления.
 
 ### `ReadingSessionEntity`
@@ -1005,6 +1025,25 @@ Room-сущность таблицы `reading_sessions`.
 - дату создания записи.
 
 Именно эти записи используются для календаря чтения и суммарной статистики.
+
+### `RecommendationCacheEntity`
+
+Файл:
+
+```text
+app/src/main/java/com/finenkodenis/bookshelf/data/local/Entities.kt
+```
+
+Room-сущность таблицы `recommendation_cache`.
+
+Хранит:
+
+- пользователя;
+- ключ подборки по текущим жанрам;
+- JSON со списком рекомендованных книг;
+- время создания кеша.
+
+Кеш позволяет повторно показать найденные рекомендации при следующем открытии экрана и обновлять их только по запросу пользователя.
 
 ### `ReadingStatus`
 
@@ -1104,6 +1143,22 @@ DAO для таблицы `reading_sessions`.
 ```kotlin
 ReadingDayRow(readDate, totalMinutes, totalPages)
 ```
+
+### `RecommendationCacheDao`
+
+Файл:
+
+```text
+app/src/main/java/com/finenkodenis/bookshelf/data/local/RecommendationCacheDao.kt
+```
+
+DAO для таблицы `recommendation_cache`.
+
+Основные операции:
+
+- получить кеш рекомендаций пользователя;
+- сохранить или заменить кеш;
+- удалить кеш при ручном обновлении подборки.
 
 ### `AppConverters`
 
@@ -1309,6 +1364,7 @@ SearchScreen
             -> fallbackBooksForQuery()
         -> BooksUiState.Success
     -> BooksGridScreen
+    -> кнопка "Показать еще" увеличивает лимит и повторно запрашивает больше результатов
 ```
 
 ### Добавление книги в библиотеку
@@ -1330,6 +1386,7 @@ ReaderScreen
     -> BooksViewModel.saveReaderSession()
         -> LibraryRepository.ensureBookForReading()
         -> LibraryRepository.addReadingSession()
+        -> LibraryRepository.updateReadingPosition()
             -> ReadingSessionDao.insert()
 ```
 
@@ -1353,6 +1410,7 @@ RecommendationsScreen
         -> RecommendationEngine.recommendationQueries()
         -> BooksRepository.getBooks()
         -> RecommendationEngine.filterAlreadyAdded()
+        -> LibraryRepository.saveRecommendationCache()
 ```
 
 ## Тестовые классы
@@ -1393,10 +1451,11 @@ app/src/test/java/com/finenkodenis/bookshelf
 | `BookDao` | Доступ к книгам |
 | `UserBookDao` | Доступ к личной библиотеке |
 | `ReadingSessionDao` | Доступ к сессиям чтения |
+| `RecommendationCacheDao` | Кеш рекомендаций пользователя |
 | `Book` | Доменная модель книги |
 | `LibraryBook` | Книга в библиотеке пользователя |
 | `LibraryStats` | Сводная статистика пользователя |
 | `DemoLibrarySeed` | Демо-книги и демо-сессии чтения |
-| `ReaderScreen` | Встроенное чтение через WebView |
+| `ReaderScreen` | Встроенное чтение через WebView и восстановление позиции |
 | `StatsScreen` | Отображение статистики и календаря |
-| `RecommendationsScreen` | Отображение подборки книг |
+| `RecommendationsScreen` | Отображение и обновление кешированной подборки книг |

@@ -29,8 +29,10 @@
 │ added_at           │                             │ published_date     │
 │ started_at         │                             │ page_count         │
 │ finished_at        │                             │ isbn_10 / isbn_13  │
-│ updated_at         │                             │ thumbnail_url      │
-└─────────┬──────────┘                             │ preview_link       │
+│ last_reading_url   │                             │ thumbnail_url      │
+│ last_scroll_y      │                             │ preview_link       │
+│ updated_at         │                             │ created_at         │
+└─────────┬──────────┘                             │ updated_at         │
           │ 1                                      └─────────┬──────────┘
           │                                                  │ N
           │ N                                                │
@@ -43,6 +45,15 @@
 │ minutes_read       │                             │ base_url           │
 │ pages_read         │                             └────────────────────┘
 │ note               │
+└────────────────────┘
+
+┌────────────────────┐        N          1        ┌────────────────────┐
+│ recommendation_cache│───────────────────────────►│ users              │
+│--------------------│                             │--------------------│
+│ PK/FK user_id      │                             │ PK user_id         │
+│ cache_key          │                             └────────────────────┘
+│ books_json         │
+│ cached_at          │
 └────────────────────┘
 
 
@@ -87,6 +98,8 @@
 `user_books` is the user's personal library. Status values: `WANT_TO_READ`, `READING`, `READ`, `PAUSED`, `DROPPED`.
 
 `reading_sessions` stores reading activity by date. It supports a reading/non-reading calendar, total reading time, and pages read charts.
+
+`recommendation_cache` stores the latest recommendation result for a user. It allows the app to show the same selection later and refresh it only when the user asks.
 
 `book_recommendations` can cache generated recommendations. The recommendation algorithm can also calculate results dynamically from `v_user_genre_stats`.
 

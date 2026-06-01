@@ -36,7 +36,7 @@ class NetworkBooksRepository(
         val safeLimit = max(maxResults, 1)
         val remoteBooks = when (source) {
             BookSearchSource.ALL -> getMergedRemoteBooks(normalizedQuery, safeLimit)
-            BookSearchSource.OPEN_LIBRARY -> getOpenLibraryBooks(normalizedQuery, min(safeLimit, 50))
+            BookSearchSource.OPEN_LIBRARY -> getOpenLibraryBooks(normalizedQuery, min(safeLimit, MAX_REMOTE_RESULTS))
             BookSearchSource.GUTENDEX -> getGutendexBooks(normalizedQuery, safeLimit)
             BookSearchSource.INTERNET_ARCHIVE -> getInternetArchiveBooks(normalizedQuery, safeLimit)
             BookSearchSource.LIBRARY_OF_CONGRESS -> getLibraryOfCongressBooks(normalizedQuery, safeLimit)
@@ -54,7 +54,7 @@ class NetworkBooksRepository(
 
     private suspend fun getMergedRemoteBooks(query: String, maxResults: Int): List<Book> {
         val sourceLimit = min(max(ceil(maxResults / REMOTE_SOURCE_COUNT.toDouble()).toInt(), MIN_RESULTS_PER_SOURCE), maxResults)
-        val openLibraryBooks = runCatching { getOpenLibraryBooks(query, min(sourceLimit, 50)) }.getOrDefault(emptyList())
+        val openLibraryBooks = runCatching { getOpenLibraryBooks(query, min(sourceLimit, MAX_REMOTE_RESULTS)) }.getOrDefault(emptyList())
         val gutendexBooks = runCatching { getGutendexBooks(query, sourceLimit) }.getOrDefault(emptyList())
         val internetArchiveBooks = runCatching { getInternetArchiveBooks(query, sourceLimit) }.getOrDefault(emptyList())
         val libraryOfCongressBooks = runCatching { getLibraryOfCongressBooks(query, sourceLimit) }.getOrDefault(emptyList())
@@ -71,22 +71,25 @@ class NetworkBooksRepository(
 
     private suspend fun getGutendexBooks(query: String, limit: Int): List<Book> {
         val gutendexQuery = query.toPlainBookQuery()
-        return gutendexService.searchBooks(gutendexQuery).results
-            .mapNotNull { it.toBook() }
+        val pagesToLoad = ceil(limit / GUTENDEX_PAGE_SIZE.toDouble()).toInt().coerceAtLeast(1)
+        return (1..pagesToLoad)
+            .flatMap { page ->
+                gutendexService.searchBooks(gutendexQuery, page).results.mapNotNull { it.toBook() }
+            }
             .take(limit)
     }
 
     private suspend fun getInternetArchiveBooks(query: String, limit: Int): List<Book> {
         return internetArchiveService.searchBooks(
             query = query.toInternetArchiveQuery(),
-            rows = min(limit, 50)
+            rows = min(limit, MAX_REMOTE_RESULTS)
         ).response.docs.mapNotNull { it.toBook() }
     }
 
     private suspend fun getLibraryOfCongressBooks(query: String, limit: Int): List<Book> {
         return libraryOfCongressService.searchBooks(
             query = query.toPlainBookQuery(),
-            count = min(limit, 50)
+            count = min(limit, MAX_REMOTE_RESULTS)
         ).results.mapNotNull { it.toBook() }
     }
 
@@ -226,5 +229,7 @@ class NetworkBooksRepository(
     private companion object {
         const val REMOTE_SOURCE_COUNT = 4
         const val MIN_RESULTS_PER_SOURCE = 6
+        const val MAX_REMOTE_RESULTS = 100
+        const val GUTENDEX_PAGE_SIZE = 32
     }
 }

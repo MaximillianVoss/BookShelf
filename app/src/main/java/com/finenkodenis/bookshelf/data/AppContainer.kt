@@ -72,7 +72,8 @@ class DefaultAppContainer(context: Context) : AppContainer {
         LibraryRepository(
             bookDao = database.bookDao(),
             userBookDao = database.userBookDao(),
-            readingSessionDao = database.readingSessionDao()
+            readingSessionDao = database.readingSessionDao(),
+            recommendationCacheDao = database.recommendationCacheDao()
         )
     }
 

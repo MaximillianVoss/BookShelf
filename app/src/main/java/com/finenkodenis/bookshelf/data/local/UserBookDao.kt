@@ -26,6 +26,10 @@ data class LibraryBookRow(
     val startedAt: Long?,
     @ColumnInfo(name = "finished_at")
     val finishedAt: Long?,
+    @ColumnInfo(name = "last_reading_url")
+    val lastReadingUrl: String?,
+    @ColumnInfo(name = "last_scroll_y")
+    val lastScrollY: Int,
     @ColumnInfo(name = "book_id")
     val bookId: Long,
     @ColumnInfo(name = "source")
@@ -93,6 +97,8 @@ interface UserBookDao {
             ub.added_at,
             ub.started_at,
             ub.finished_at,
+            ub.last_reading_url,
+            ub.last_scroll_y,
             b.book_id,
             b.source,
             b.external_id,
@@ -109,7 +115,13 @@ interface UserBookDao {
         INNER JOIN books b ON b.book_id = ub.book_id
         WHERE ub.user_id = :userId
           AND (:status IS NULL OR ub.status = :status)
-        ORDER BY ub.updated_at DESC, ub.added_at DESC
+        ORDER BY
+            CASE
+                WHEN :status IS NULL AND ub.status = 'READING' THEN 0
+                ELSE 1
+            END,
+            ub.updated_at DESC,
+            ub.added_at DESC
         """
     )
     fun observeLibrary(userId: Long, status: String?): Flow<List<LibraryBookRow>>
@@ -126,6 +138,8 @@ interface UserBookDao {
             ub.added_at,
             ub.started_at,
             ub.finished_at,
+            ub.last_reading_url,
+            ub.last_scroll_y,
             b.book_id,
             b.source,
             b.external_id,

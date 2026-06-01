@@ -23,6 +23,7 @@ fun RecommendationsScreen(
     booksUiState: BooksUiState,
     topGenres: List<GenreStat>,
     onReload: () -> Unit,
+    onLoadMore: () -> Unit,
     onBookClicked: (Book) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -46,7 +47,7 @@ fun RecommendationsScreen(
             Spacer(modifier = Modifier.height(8.dp))
             Row {
                 Button(onClick = onReload) {
-                    Text("Обновить")
+                    Text("Обновить подборку")
                 }
                 Spacer(modifier = Modifier.width(8.dp))
             }
@@ -55,6 +56,14 @@ fun RecommendationsScreen(
         when (booksUiState) {
             is BooksUiState.Loading -> LoadingScreen(Modifier.fillMaxSize())
             is BooksUiState.Success -> {
+                booksUiState.message?.let { message ->
+                    Text(
+                        text = message,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 if (booksUiState.bookSearch.isEmpty()) {
                     EmptyState(
                         title = "Рекомендаций пока нет",
@@ -64,7 +73,10 @@ fun RecommendationsScreen(
                     BooksGridScreen(
                         books = booksUiState.bookSearch,
                         modifier = Modifier,
-                        onBookClicked = onBookClicked
+                        onBookClicked = onBookClicked,
+                        canLoadMore = booksUiState.canLoadMore,
+                        isLoadingMore = booksUiState.isLoadingMore,
+                        onLoadMore = onLoadMore
                     )
                 }
             }

@@ -7,7 +7,8 @@ import retrofit2.http.Query
 interface GutendexService {
     @GET("books/")
     suspend fun searchBooks(
-        @Query("search") query: String
+        @Query("search") query: String,
+        @Query("page") page: Int = 1
     ): GutendexSearchResponse
 }
 

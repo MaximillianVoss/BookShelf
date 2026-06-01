@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -32,9 +33,10 @@ import com.finenkodenis.bookshelf.data.ReadingTimer
 fun ReaderScreen(
     title: String,
     url: String?,
+    initialScrollY: Int,
     elapsedMinutes: () -> Int,
-    onBack: () -> Unit,
-    onSaveReadingSession: (Int) -> Unit,
+    onBack: (String?, Int) -> Unit,
+    onSaveReadingSession: (Int, String?, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (url.isNullOrBlank()) {
@@ -48,7 +50,18 @@ fun ReaderScreen(
 
     var showExitDialog by remember(url) { mutableStateOf(false) }
     var minutesToSave by remember(url) { mutableStateOf(1) }
+    var exitUrl by remember(url) { mutableStateOf(url) }
+    var exitScrollY by remember(url) { mutableStateOf(initialScrollY.coerceAtLeast(0)) }
+    var webView by remember(url) { mutableStateOf<WebView?>(null) }
+
+    fun captureReadingPosition() {
+        val currentWebView = webView
+        exitUrl = currentWebView?.url ?: url
+        exitScrollY = currentWebView?.scrollY?.coerceAtLeast(0) ?: 0
+    }
+
     fun requestExit() {
+        captureReadingPosition()
         minutesToSave = elapsedMinutes()
         showExitDialog = true
     }
@@ -69,7 +82,7 @@ fun ReaderScreen(
                 TextButton(
                     onClick = {
                         showExitDialog = false
-                        onSaveReadingSession(minutesToSave)
+                        onSaveReadingSession(minutesToSave, exitUrl, exitScrollY)
                     }
                 ) {
                     Text("Засчитать")
@@ -79,7 +92,7 @@ fun ReaderScreen(
                 TextButton(
                     onClick = {
                         showExitDialog = false
-                        onBack()
+                        onBack(exitUrl, exitScrollY)
                     }
                 ) {
                     Text("Не засчитывать")
@@ -107,23 +120,36 @@ fun ReaderScreen(
             )
         }
 
-        AndroidView(
-            modifier = Modifier.fillMaxSize(),
-            factory = { context ->
-                WebView(context).apply {
-                    webViewClient = WebViewClient()
-                    settings.javaScriptEnabled = true
-                    settings.domStorageEnabled = true
-                    settings.loadWithOverviewMode = true
-                    settings.useWideViewPort = true
-                    loadUrl(url)
+        key(url) {
+            var restoredScroll by remember(url, initialScrollY) { mutableStateOf(false) }
+            AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = { context ->
+                    WebView(context).apply {
+                        webView = this
+                        webViewClient = object : WebViewClient() {
+                            override fun onPageFinished(view: WebView, loadedUrl: String?) {
+                                super.onPageFinished(view, loadedUrl)
+                                if (!restoredScroll && initialScrollY > 0) {
+                                    restoredScroll = true
+                                    view.postDelayed(
+                                        { view.scrollTo(0, initialScrollY.coerceAtLeast(0)) },
+                                        250L
+                                    )
+                                }
+                            }
+                        }
+                        settings.javaScriptEnabled = true
+                        settings.domStorageEnabled = true
+                        settings.loadWithOverviewMode = true
+                        settings.useWideViewPort = true
+                        loadUrl(url)
+                    }
+                },
+                update = { currentWebView ->
+                    webView = currentWebView
                 }
-            },
-            update = { webView ->
-                if (webView.url != url) {
-                    webView.loadUrl(url)
-                }
-            }
-        )
+            )
+        }
     }
 }

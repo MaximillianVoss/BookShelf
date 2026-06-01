@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.finenkodenis.bookshelf.ui.theme.screens.AuthScreen
 import com.finenkodenis.bookshelf.ui.theme.screens.BookDetailScreen
@@ -52,7 +53,11 @@ fun BooksApp(modifier: Modifier = Modifier) {
         topBar = {
             TopAppBar(
                 title = {
-                    Text(text = "${viewModel.currentSection.title} · ${currentUser.username}")
+                    Text(
+                        text = "${viewModel.currentSection.title} · ${currentUser.username}",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 },
                 actions = {
                     TextButton(onClick = viewModel::logout) {
@@ -74,7 +79,15 @@ fun BooksApp(modifier: Modifier = Modifier) {
                             selected = viewModel.currentSection == section,
                             onClick = { viewModel.selectSection(section) },
                             icon = {},
-                            label = { Text(section.title) }
+                            label = {
+                                Text(
+                                    text = section.navTitle,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis,
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
                         )
                     }
                 }
@@ -99,7 +112,8 @@ fun BooksApp(modifier: Modifier = Modifier) {
                     onSourceSelected = viewModel::selectSearchSource,
                     onGenreClicked = viewModel::searchByGenre,
                     onBookClicked = { viewModel.openBook(it) },
-                    retryAction = { viewModel.getBooks() }
+                    retryAction = { viewModel.getBooks() },
+                    onLoadMore = viewModel::loadMoreBooks
                 )
                 AppSection.LIBRARY -> LibraryScreen(
                     libraryBooks = libraryBooks,
@@ -110,7 +124,8 @@ fun BooksApp(modifier: Modifier = Modifier) {
                 AppSection.RECOMMENDATIONS -> RecommendationsScreen(
                     booksUiState = viewModel.recommendationsUiState,
                     topGenres = libraryStats.topGenres,
-                    onReload = viewModel::loadRecommendations,
+                    onReload = viewModel::refreshRecommendations,
+                    onLoadMore = viewModel::loadMoreRecommendations,
                     onBookClicked = { viewModel.openBook(it) }
                 )
                 AppSection.STATS -> StatsScreen(
@@ -129,8 +144,9 @@ fun BooksApp(modifier: Modifier = Modifier) {
                 AppSection.READER -> ReaderScreen(
                     title = viewModel.readerTitle,
                     url = viewModel.readerUrl,
+                    initialScrollY = viewModel.readerInitialScrollY,
                     elapsedMinutes = viewModel::elapsedReaderMinutes,
-                    onBack = viewModel::closeReader,
+                    onBack = { currentUrl, scrollY -> viewModel.closeReader(currentUrl, scrollY) },
                     onSaveReadingSession = viewModel::saveReaderSession
                 )
             }

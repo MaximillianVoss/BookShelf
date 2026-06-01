@@ -4,11 +4,15 @@ import com.finenkodenis.bookshelf.data.local.BookDao
 import com.finenkodenis.bookshelf.data.local.BookEntity
 import com.finenkodenis.bookshelf.data.local.LibraryBookRow
 import com.finenkodenis.bookshelf.data.local.ReadingDayRow
+import com.finenkodenis.bookshelf.data.local.RecommendationCacheDao
+import com.finenkodenis.bookshelf.data.local.RecommendationCacheEntity
 import com.finenkodenis.bookshelf.data.local.ReadingSessionDao
 import com.finenkodenis.bookshelf.data.local.ReadingSessionEntity
 import com.finenkodenis.bookshelf.data.local.ReadingStatus
 import com.finenkodenis.bookshelf.data.local.UserBookDao
 import com.finenkodenis.bookshelf.data.local.UserBookEntity
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -20,8 +24,12 @@ class LibraryRepository(
     private val bookDao: BookDao,
     private val userBookDao: UserBookDao,
     private val readingSessionDao: ReadingSessionDao,
+    private val recommendationCacheDao: RecommendationCacheDao,
     private val recommendationEngine: RecommendationEngine = RecommendationEngine()
 ) {
+    private val gson = Gson()
+    private val bookListType = object : TypeToken<List<Book>>() {}.type
+
     fun observeLibrary(userId: Long, status: ReadingStatus? = null): Flow<List<LibraryBook>> {
         return userBookDao.observeLibrary(userId, status?.name).map { rows ->
             rows.map { it.toLibraryBook() }
@@ -122,6 +130,21 @@ class LibraryRepository(
         )
     }
 
+    suspend fun updateReadingPosition(
+        userBookId: Long,
+        readingUrl: String?,
+        scrollY: Int
+    ) {
+        val existing = userBookDao.getById(userBookId) ?: return
+        userBookDao.update(
+            existing.copy(
+                lastReadingUrl = readingUrl?.takeIf { it.isNotBlank() },
+                lastScrollY = scrollY.coerceAtLeast(0),
+                updatedAt = System.currentTimeMillis()
+            )
+        )
+    }
+
     suspend fun ensureBookForReading(userId: Long, book: Book): LibraryBook {
         val bookId = saveBook(book)
         val existing = userBookDao.getByUserAndBook(userId, bookId)
@@ -155,6 +178,42 @@ class LibraryRepository(
         }
 
         return updated.toLibraryBook(savedBook)
+    }
+
+    suspend fun getCachedRecommendations(
+        userId: Long,
+        cacheKey: String,
+        minResults: Int,
+        maxAgeMillis: Long = RECOMMENDATION_CACHE_TTL_MILLIS
+    ): List<Book>? {
+        val cache = recommendationCacheDao.getByUser(userId) ?: return null
+        if (cache.cacheKey != cacheKey) return null
+        if (System.currentTimeMillis() - cache.cachedAt > maxAgeMillis) return null
+
+        val books = runCatching {
+            gson.fromJson<List<Book>>(cache.booksJson, bookListType)
+        }.getOrDefault(emptyList())
+
+        return books.takeIf { it.size >= minResults }
+    }
+
+    suspend fun saveRecommendationCache(
+        userId: Long,
+        cacheKey: String,
+        books: List<Book>
+    ) {
+        recommendationCacheDao.upsert(
+            RecommendationCacheEntity(
+                userId = userId,
+                cacheKey = cacheKey,
+                booksJson = gson.toJson(books),
+                cachedAt = System.currentTimeMillis()
+            )
+        )
+    }
+
+    suspend fun clearRecommendationCache(userId: Long) {
+        recommendationCacheDao.deleteByUser(userId)
     }
 
     suspend fun seedDemoData(userId: Long) {
@@ -234,6 +293,8 @@ class LibraryRepository(
             addedAt = addedAt,
             startedAt = startedAt,
             finishedAt = finishedAt,
+            lastReadingUrl = lastReadingUrl,
+            lastScrollY = lastScrollY,
             book = Book(
                 localId = bookId,
                 externalId = externalId,
@@ -261,7 +322,9 @@ class LibraryRepository(
             review = review,
             addedAt = addedAt,
             startedAt = startedAt,
-            finishedAt = finishedAt
+            finishedAt = finishedAt,
+            lastReadingUrl = lastReadingUrl,
+            lastScrollY = lastScrollY
         )
     }
 
@@ -292,5 +355,9 @@ class LibraryRepository(
 
     private fun today(): String {
         return SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+    }
+
+    private companion object {
+        const val RECOMMENDATION_CACHE_TTL_MILLIS = 7L * 24L * 60L * 60L * 1000L
     }
 }

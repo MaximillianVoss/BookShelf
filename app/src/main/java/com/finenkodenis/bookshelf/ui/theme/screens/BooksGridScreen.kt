@@ -8,8 +8,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,7 +36,10 @@ import androidx.compose.material3.MaterialTheme
 fun BooksGridScreen(
     books: List<Book>,
     modifier: Modifier,
-    onBookClicked: (Book) -> Unit
+    onBookClicked: (Book) -> Unit,
+    canLoadMore: Boolean = false,
+    isLoadingMore: Boolean = false,
+    onLoadMore: () -> Unit = {}
 ) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(150.dp),
@@ -42,6 +47,19 @@ fun BooksGridScreen(
     ) {
         itemsIndexed(books) { _, book ->
             BooksCard(book = book, modifier, onBookClicked)
+        }
+        if (canLoadMore) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Button(
+                    onClick = onLoadMore,
+                    enabled = !isLoadingMore,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                ) {
+                    Text(if (isLoadingMore) "Загрузка..." else "Показать еще")
+                }
+            }
         }
     }
 }

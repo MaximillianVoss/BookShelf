@@ -41,6 +41,7 @@ fun SearchScreen(
     onGenreClicked: (BookGenre) -> Unit,
     onBookClicked: (Book) -> Unit,
     retryAction: () -> Unit,
+    onLoadMore: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxSize()) {
@@ -84,7 +85,10 @@ fun SearchScreen(
                 BooksGridScreen(
                     books = booksUiState.bookSearch,
                     modifier = Modifier,
-                    onBookClicked = onBookClicked
+                    onBookClicked = onBookClicked,
+                    canLoadMore = booksUiState.canLoadMore,
+                    isLoadingMore = booksUiState.isLoadingMore,
+                    onLoadMore = onLoadMore
                 )
             }
             is BooksUiState.Error -> ErrorScreen(

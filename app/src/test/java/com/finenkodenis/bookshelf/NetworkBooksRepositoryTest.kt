@@ -135,6 +135,19 @@ class NetworkBooksRepositoryTest {
         )
     }
 
+    @Test
+    fun gutendexSource_loadsAdditionalPagesWhenLimitExceedsFirstPage() = runTest {
+        val gutendexService = PagedGutendexService()
+        val repository = repository(gutendexService = gutendexService)
+
+        val books = repository.getBooks("fiction", maxResults = 40, source = BookSearchSource.GUTENDEX)
+
+        assertEquals(40, books.size)
+        assertEquals(listOf(1, 2), gutendexService.requestedPages)
+        assertEquals("Book 1", books.first().title)
+        assertEquals("Book 40", books.last().title)
+    }
+
     private fun repository(
         openLibraryService: OpenLibraryService = EmptyOpenLibraryService(),
         gutendexService: GutendexService = EmptyGutendexService(),
@@ -214,13 +227,13 @@ class NetworkBooksRepositoryTest {
     }
 
     private class EmptyGutendexService : GutendexService {
-        override suspend fun searchBooks(query: String): GutendexSearchResponse {
+        override suspend fun searchBooks(query: String, page: Int): GutendexSearchResponse {
             return GutendexSearchResponse()
         }
     }
 
     private class StaticGutendexService : GutendexService {
-        override suspend fun searchBooks(query: String): GutendexSearchResponse {
+        override suspend fun searchBooks(query: String, page: Int): GutendexSearchResponse {
             return GutendexSearchResponse(
                 results = listOf(
                     GutendexBook(
@@ -246,8 +259,26 @@ class NetworkBooksRepositoryTest {
     }
 
     private class FailingGutendexService : GutendexService {
-        override suspend fun searchBooks(query: String): GutendexSearchResponse {
+        override suspend fun searchBooks(query: String, page: Int): GutendexSearchResponse {
             error("Gutendex unavailable")
+        }
+    }
+
+    private class PagedGutendexService : GutendexService {
+        val requestedPages = mutableListOf<Int>()
+
+        override suspend fun searchBooks(query: String, page: Int): GutendexSearchResponse {
+            requestedPages += page
+            val start = (page - 1) * 32 + 1
+            return GutendexSearchResponse(
+                results = (start until start + 32).map { index ->
+                    GutendexBook(
+                        id = index,
+                        title = "Book $index",
+                        authors = listOf(GutendexPerson("Author $index"))
+                    )
+                }
+            )
         }
     }
 

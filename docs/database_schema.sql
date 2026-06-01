@@ -87,12 +87,24 @@ CREATE TABLE IF NOT EXISTS user_books (
     added_at TEXT NOT NULL DEFAULT (datetime('now')),
     started_at TEXT,
     finished_at TEXT,
+    last_reading_url TEXT,
+    last_scroll_y INTEGER NOT NULL DEFAULT 0 CHECK (last_scroll_y >= 0),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     UNIQUE (user_id, book_id),
     FOREIGN KEY (user_id) REFERENCES users(user_id)
         ON UPDATE CASCADE
         ON DELETE CASCADE,
     FOREIGN KEY (book_id) REFERENCES books(book_id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS recommendation_cache (
+    user_id INTEGER PRIMARY KEY,
+    cache_key TEXT NOT NULL,
+    books_json TEXT NOT NULL,
+    cached_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
         ON UPDATE CASCADE
         ON DELETE CASCADE
 );
@@ -144,6 +156,9 @@ CREATE INDEX IF NOT EXISTS idx_reading_sessions_user_book_date
 
 CREATE INDEX IF NOT EXISTS idx_recommendations_user_score
     ON book_recommendations(user_id, score DESC);
+
+CREATE INDEX IF NOT EXISTS idx_recommendation_cache_cached_at
+    ON recommendation_cache(cached_at);
 
 CREATE VIEW IF NOT EXISTS v_user_library AS
 SELECT

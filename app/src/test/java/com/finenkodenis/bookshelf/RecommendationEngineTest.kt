@@ -102,7 +102,9 @@ class RecommendationEngineTest {
             review = null,
             addedAt = 0,
             startedAt = null,
-            finishedAt = null
+            finishedAt = null,
+            lastReadingUrl = null,
+            lastScrollY = 0
         )
     }
 }

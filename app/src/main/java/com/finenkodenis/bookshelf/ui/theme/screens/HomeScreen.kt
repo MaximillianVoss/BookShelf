@@ -17,7 +17,9 @@ fun HomeScreen(
         is BooksUiState.Success -> BooksGridScreen(
             books = booksUiState.bookSearch,
             modifier = modifier,
-            onBookClicked
+            onBookClicked = onBookClicked,
+            canLoadMore = booksUiState.canLoadMore,
+            isLoadingMore = booksUiState.isLoadingMore
         )
         is BooksUiState.Error -> ErrorScreen(retryAction = retryAction, modifier)
     }

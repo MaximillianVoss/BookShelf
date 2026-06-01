@@ -11,7 +11,9 @@ data class LibraryBook(
     val review: String?,
     val addedAt: Long,
     val startedAt: Long?,
-    val finishedAt: Long?
+    val finishedAt: Long?,
+    val lastReadingUrl: String?,
+    val lastScrollY: Int
 )
 
 data class ReadingDay(

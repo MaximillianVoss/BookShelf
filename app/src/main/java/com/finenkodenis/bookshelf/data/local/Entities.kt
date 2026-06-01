@@ -103,8 +103,37 @@ data class UserBookEntity(
     val startedAt: Long? = null,
     @ColumnInfo(name = "finished_at")
     val finishedAt: Long? = null,
+    @ColumnInfo(name = "last_reading_url")
+    val lastReadingUrl: String? = null,
+    @ColumnInfo(name = "last_scroll_y")
+    val lastScrollY: Int = 0,
     @ColumnInfo(name = "updated_at")
     val updatedAt: Long = System.currentTimeMillis()
+)
+
+@Entity(
+    tableName = "recommendation_cache",
+    foreignKeys = [
+        ForeignKey(
+            entity = UserEntity::class,
+            parentColumns = ["user_id"],
+            childColumns = ["user_id"],
+            onDelete = ForeignKey.CASCADE,
+            onUpdate = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index(value = ["user_id"], unique = true)]
+)
+data class RecommendationCacheEntity(
+    @PrimaryKey
+    @ColumnInfo(name = "user_id")
+    val userId: Long,
+    @ColumnInfo(name = "cache_key")
+    val cacheKey: String,
+    @ColumnInfo(name = "books_json")
+    val booksJson: String,
+    @ColumnInfo(name = "cached_at")
+    val cachedAt: Long = System.currentTimeMillis()
 )
 
 @Entity(

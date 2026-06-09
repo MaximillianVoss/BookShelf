@@ -1,5 +1,22 @@
 # BookShelf
 
+<!-- codex-repo-note:start -->
+## Справка о репозитории / Repository note
+
+**RU:** мобильное приложение для учета книг и книжной полки.
+
+**EN:** a mobile application for book and bookshelf tracking.
+
+**Статус / Status:** активный проект 2026 года; ожидает рефакторинга и переименования. / active 2026 project; refactoring and repository rename are pending.
+
+**Текущее имя / Current name:** `BookShelf`
+
+**Плановое имя / Planned name:** `bookshelf`
+
+**Topics:** `book-management`, `cleanup-pending`, `kotlin`, `mobile-app`, `needs-rename`, `needs-review`, `status-active`, `type-app`
+<!-- codex-repo-note:end -->
+
+
 Android-приложение для отслеживания прочитанных книг.
 
 Тема дипломного проекта: **"Приложение для отслеживания прочитанных книг"**.
